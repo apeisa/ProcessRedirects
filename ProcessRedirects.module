@@ -26,7 +26,7 @@ class ProcessRedirects extends Process {
 
 		$table = $this->modules->get("MarkupAdminDataTable");
 		$table->setEncodeEntities(false);
-		$table->headerRow(array('Redirect From', 'Redirect To', 'Delete'));
+		$table->headerRow(array('Redirect From', 'Redirect To', 'Hits', 'Delete'));
 
 		$result = $this->db->query("SELECT * FROM {$this->className} ORDER BY redirect_from");
 
@@ -36,6 +36,7 @@ class ProcessRedirects extends Process {
 			 $table->row(array(
 				 $row['redirect_from'] => "edit/?id=$row[id]",
 				 $row['redirect_to'] => "edit/?id=$row[id]",
+				 $row['counter'],
 				 "<input type='checkbox' name='delete[]' value='$row[id]' />"
 				 ));
 		}
@@ -46,6 +47,7 @@ class ProcessRedirects extends Process {
 		$button->value = 'Remove selected redirects';
 
 		$table->action(array('Add Redirect' => 'edit/?id=0'));
+		$table->action(array('Import Redirects' => 'import/'));
 
 		// Is there clean way to add button to right side?
 		return $description . "<form id='redirects_form' action='./delete/' method='post'>" .$table->render() . $button->render() . "</form>";
@@ -84,12 +86,7 @@ class ProcessRedirects extends Process {
 		$field->value = $id;
 		$form->add($field);
 
-		if($id > 0) {
-			$field = $this->modules->get("InputfieldURL");
-		} else {
-			$field = $this->modules->get("InputfieldTextarea");
-		}
-
+		$field = $this->modules->get("InputfieldURL");
 		$field->label = 'Redirect from';
 		$field->description = 'Enter relative url with slashes, like: /summer/. You can define multiple urls here, just put one url per line.';
 		$field->name = 'redirect_from';
@@ -144,47 +141,81 @@ _END;
 		return $form->render() . $script;
 	}
 
+	public function ___executeImport() {
+
+		$this->fuel->breadcrumbs->add(new Breadcrumb('../', 'Redirects'));
+
+		$form = $this->modules->get("InputfieldForm");
+		$form->method = 'post';
+		$form->action = '../savearray/';
+
+		$field = $this->modules->get("InputfieldTextarea");
+		$field->label = 'List of redirects';
+		$field->description = "Comma separeted list, where each redirect is on one line. ie. /campaign/,/products/tools/offers/ or /campaign/,www.someotherdomain.com";
+		$field->name = 'redirects';
+		$form->add($field);
+
+		$field = $this->modules->get("InputfieldButton");
+		$field->type = 'submit';
+		$field->value = 'Add New Redirects';
+		$form->add($field);
+
+		return $form->render();
+	}
+
 	/**
 	 * Save Redirect - Called when the URL is ./save/
 	 *
 	 */
 	public function ___executeSave() {
-		
+
 		$count = 0;
 
 		$id = (int) $this->input->post->id;
-		$from_array = explode("\n",$this->input->post->redirect_from);
+		$from = $this->db->escape_string($this->input->post->redirect_from);
 		$to = $this->sanitizer->url($this->input->post->redirect_to);
 		$to = $this->db->escape_string($to);
 
-		if (empty($from_array) || $from_array[0] == '' || $to == '') {
+		if ($from == '' || $to == '') {
 			$this->error("No redirect created, please check your values.");
 			$this->session->redirect("../"); // back to list
 		}
 
-		foreach ($from_array as $from) {
+		$this->_saveRedirect($from, $to, $id);
 
-			$from = trim($from);
+		$this->message("Saved redirect from \"$from\" to \"$to\".");
+		$this->session->redirect("../"); // back to list
+
+	}
+
+	public function ___executeSavearray() {
+
+		$count = 0;
+
+		$redirects_array = explode("\n",$this->input->post->redirects);
+
+		if (empty($redirects_array) || $redirects_array[0] == '') {
+			$this->error("No redirect created, please check your values.");
+			$this->session->redirect("../"); // back to list
+		}
+
+		foreach ($redirects_array as $redirect) {
+
+			$redirect_urls = explode(",", $redirect);
+
+			$from = trim($redirect_urls[0]);
+			$to = trim($redirect_urls[1]);
 
 			// We want to skip empty lines
-			if($from == "") continue;
+			if($from == "" | $to == "") continue;
 
-			$from = $this->_addUrlSlashes($from);
-			$from = $this->db->escape_string($from);
-
-			if ($id > 0) {
-				$sql = "UPDATE {$this->className} SET redirect_from = '$from', redirect_to = '$to' WHERE id = $id";
-			} else {
-				$sql = "INSERT INTO {$this->className} SET redirect_from = '$from', redirect_to = '$to' ON DUPLICATE KEY UPDATE id = id;";
-			}
-			$this->db->query($sql);
+			$this->_saveRedirect($from, $to);
 			$count++;
 
 		}
 
-	   $this->message("Saved $count redirect(s).");
-	   $this->session->redirect("../"); // back to list
-
+		$this->message("Saved $count new redirects.");
+		$this->session->redirect("../"); // back to list
 	}
 
 	public function ___executeDelete() {
@@ -222,14 +253,28 @@ _END;
 		$url2 = $this->db->escape_string($url . '/');
 
 		// now see if it's in the DB
-		$sql = "SELECT redirect_to FROM {$this->className} WHERE redirect_from='$url' OR redirect_from='$url2'";
+		$sql = "SELECT id, redirect_to FROM {$this->className} WHERE redirect_from='$url' OR redirect_from='$url2'";
 		$result = $this->db->query($sql);
 
 		// if there is a match, then redirect to it
 		if($result->num_rows) {
-			list($redirect_to) = $result->fetch_array();
+			list($id, $redirect_to) = $result->fetch_array();
+			$sql = "UPDATE {$this->className} SET counter = counter +1 WHERE id = $id";
+			$this->db->query($sql);
 			$this->session->redirect($redirect_to);
 		}
+	}
+
+	private function _saveRedirect($from, $to, $id = 0) {
+		$from = $this->_addUrlSlashes($from);
+		$from = $this->db->escape_string($from);
+		$to = $this->db->escape_string($to);
+		if ($id == 0) {
+			$sql = "INSERT INTO {$this->className} SET redirect_from = '$from', redirect_to = '$to' ON DUPLICATE KEY UPDATE id = id;";
+		} else {
+			$sql = "UPDATE {$this->className} SET redirect_from = '$from', redirect_to = '$to' WHERE id = $id";
+		}
+		return $this->db->query($sql);
 	}
 
 	private function _addUrlSlashes($url) {
@@ -256,6 +301,7 @@ _END;
 
 		CREATE TABLE {$this->className} (
 			id int unsigned NOT NULL auto_increment,
+			counter int unsigned DEFAULT 0,
 			redirect_from varchar(255) NOT NULL DEFAULT '',
 			redirect_to varchar(255) NOT NULL DEFAULT '',
 			PRIMARY KEY(id),

@@ -88,7 +88,7 @@ class ProcessRedirects extends Process {
 
 		$field = $this->modules->get("InputfieldURL");
 		$field->label = 'Redirect from';
-		$field->description = 'Enter relative url with slashes, like: /summer/. You can define multiple urls here, just put one url per line.';
+		$field->description = 'Enter relative url with slashes, like: /summer/ or /products/t-shirt.html. You can define multiple urls here, just put one url per line.';
 		$field->name = 'redirect_from';
 		$field->value = $from;
 		$form->add($field);
@@ -143,6 +143,7 @@ _END;
 	public function ___executeImport() {
 
 		$this->fuel->breadcrumbs->add(new Breadcrumb('../', 'Redirects'));
+		$this->setFuel('processHeadline', "Import Redirects");
 
 		$form = $this->modules->get("InputfieldForm");
 		$form->method = 'post';

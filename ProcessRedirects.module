@@ -127,13 +127,12 @@ class ProcessRedirects extends Process {
 
 _END;
 
-
 		$field = $this->modules->get("InputfieldButton");
 		$field->type = 'submit';
 		if($id > 0 ) {
 			$field->value = 'Update Redirect';
 		} else {
-			$field->value = 'Add New Redirect(s)';
+			$field->value = 'Add New Redirect';
 		}
 
 		$form->add($field);
@@ -153,6 +152,7 @@ _END;
 		$field->label = 'List of redirects';
 		$field->description = "Comma separeted list, where each redirect is on one line. ie. /campaign/,/products/tools/offers/ or /campaign/,www.someotherdomain.com";
 		$field->name = 'redirects';
+		$field->rows = 15;
 		$form->add($field);
 
 		$field = $this->modules->get("InputfieldButton");
@@ -169,12 +169,9 @@ _END;
 	 */
 	public function ___executeSave() {
 
-		$count = 0;
-
 		$id = (int) $this->input->post->id;
-		$from = $this->db->escape_string($this->input->post->redirect_from);
-		$to = $this->sanitizer->url($this->input->post->redirect_to);
-		$to = $this->db->escape_string($to);
+		$from = $this->input->post->redirect_from;
+		$to = $this->input->post->redirect_to;
 
 		if ($from == '' || $to == '') {
 			$this->error("No redirect created, please check your values.");
@@ -191,7 +188,6 @@ _END;
 	public function ___executeSavearray() {
 
 		$count = 0;
-
 		$redirects_array = explode("\n",$this->input->post->redirects);
 
 		if (empty($redirects_array) || $redirects_array[0] == '') {
@@ -267,8 +263,11 @@ _END;
 
 	private function _saveRedirect($from, $to, $id = 0) {
 		$from = $this->_addUrlSlashes($from);
+		$to = $this->sanitizer->url($to);
+
 		$from = $this->db->escape_string($from);
 		$to = $this->db->escape_string($to);
+
 		if ($id == 0) {
 			$sql = "INSERT INTO {$this->className} SET redirect_from = '$from', redirect_to = '$to' ON DUPLICATE KEY UPDATE id = id;";
 		} else {

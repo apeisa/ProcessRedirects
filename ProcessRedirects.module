@@ -88,17 +88,9 @@ class ProcessRedirects extends Process {
 
 		$field = $this->modules->get("InputfieldURL");
 		$field->label = 'Redirect from';
-		$field->description = 'Enter relative url with slashes, like: /summer/ or /products/t-shirt.html. You can define multiple urls here, just put one url per line.';
+		$field->description = 'Enter relative url with slashes, like: /summer/ or /products/t-shirt.html.';
 		$field->name = 'redirect_from';
 		$field->value = $from;
-		$form->add($field);
-
-		$field = $this->modules->get("InputfieldURL");
-		$field->label = 'Redirect to';
-		$field->description = 'Enter a valid URL, i.e. www.otherdomain.com/dir/ or relative url like /season/summer/';
-		$field->name = 'redirect_to';
-		$field->id = 'redirect_to';
-		$field->value = $to;
 		$form->add($field);
 
 		$field = $this->modules->get("InputfieldPageListSelect");
@@ -113,6 +105,16 @@ class ProcessRedirects extends Process {
 			$page = $this->pages->get($to);
 			if($page->id) $field->value = $page->id;
 		}
+		$form->add($field);
+
+
+		$field = $this->modules->get("InputfieldURL");
+		$field->label = 'or type URL here';
+		$field->description = 'Enter a valid URL, i.e. www.otherdomain.com/dir/ or relative url like /season/summer/';
+		$field->name = 'redirect_to';
+		$field->id = 'redirect_to';
+		if($page->id || $id == 0) $field->collapsed = 1;
+		$field->value = $to;
 		$form->add($field);
 
 		// now add a script that makes it automatically populate the redirect_to field

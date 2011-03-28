@@ -32,6 +32,8 @@ class ProcessRedirects extends Process {
 
 		while($row = $result->fetch_assoc()) {
 
+			$row['redirect_to'] = $this->_makeRedirectToURL($row['redirect_to']); 
+
 			 // output in table rows with edit link and delete checkbox?
 			 $table->row(array(
 				 $row['redirect_from'] => "edit/?id=$row[id]",
@@ -67,6 +69,7 @@ class ProcessRedirects extends Process {
 			// edit existing record
 			$result = $this->db->query("SELECT id, redirect_from, redirect_to FROM {$this->className} WHERE id=$id");
 			list($id, $from, $to) = $result->fetch_array();
+			$to = $this->_makeRedirectToURL($to); 
 			$this->setFuel('processHeadline', "Edit Redirect");
 
 		} else {
@@ -258,15 +261,29 @@ _END;
 		// if there is a match, then redirect to it
 		if($result->num_rows) {
 			list($id, $redirect_to) = $result->fetch_array();
+			$redirect_to = $this->_makeRedirectToURL($redirect_to, true); 
 			$sql = "UPDATE {$this->className} SET counter = counter +1 WHERE id = $id";
 			$this->db->query($sql);
 			$this->session->redirect($redirect_to);
 		}
 	}
 
+	private function _makeRedirectToURL($to, $http = false) {
+		// if redirect_to is a page ID, convert it to be the URL to the page
+		if($to[0] != '^') return $to; 
+		$page = $this->pages->get((int) substr($to, 1)); 
+		// we get httpUrl during actual redirects so that it will redirect to http/https depending on template setting.
+		// this prevents ProcessWire from doing an extra redirect to the https version if the template calls for it. 
+		if($page->id) $to = $page->get($http ? 'httpUrl' : 'path'); 
+		return $to; 
+	}
+
 	private function _saveRedirect($from, $to, $id = 0) {
 		$from = $this->_addUrlSlashes($from);
 		$to = $this->sanitizer->url($to);
+
+		// if the redirect_to maps to a page, then store it's ID instead
+		if(($page = $this->pages->get($to)) && $page->id) $to = '^' . $page->id; 
 
 		$from = $this->db->escape_string($from);
 		$to = $this->db->escape_string($to);

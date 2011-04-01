@@ -107,7 +107,7 @@ class ProcessRedirects extends Process {
 			// if it's a page, then populate the input with the page_id
 			$page = $this->pages->get($to);
 			if($page->id) $field->value = $page->id;
-		}
+		} else $page = new NullPage();
 		$form->add($field);
 
 

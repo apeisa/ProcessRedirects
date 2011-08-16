@@ -11,6 +11,7 @@ class ProcessRedirects extends Process {
 			'permanent' => false,
 			'autoload' => true,
 			'singular' => true,
+			'permission' => 'redirects-admin', 
 		);
 	}
 
@@ -282,8 +283,11 @@ _END;
 		$from = $this->_addUrlSlashes($from);
 		$to = $this->sanitizer->url($to);
 
-		// if the redirect_to maps to a page, then store it's ID instead
-		if(($page = $this->pages->get($to)) && $page->id) $to = '^' . $page->id; 
+		// Not external url, if it starts with slash
+		if(substr($to, 0, 1) == "/") {
+			// if the redirect_to maps to a page, then store it's ID instead
+			if(($page = $this->pages->get($to)) && $page->id) $to = '^' . $page->id;
+		}
 
 		$from = $this->db->escape_string($from);
 		$to = $this->db->escape_string($to);

@@ -10,8 +10,7 @@ class ProcessRedirects extends Process {
 			'version' => 100,
 			'permanent' => false,
 			'autoload' => true,
-			'singular' => true,
-			'permission' => 'redirects-admin', 
+			'singular' => true
 		);
 	}
 

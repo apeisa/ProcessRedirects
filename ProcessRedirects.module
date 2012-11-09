@@ -21,6 +21,7 @@ class ProcessRedirects extends Process {
 
 	public function ___execute() {
 		$this->setFuel('processHeadline', 'Redirects');
+        $this->config->styles->add($this->config->urls->ProcessRedirects . "ProcessRedirects2.css");
 
 		$description = "<p class='description'>Please note that redirects are active only when there is no page at the same url (so that without redirect it would give 404-error).</p>";
 

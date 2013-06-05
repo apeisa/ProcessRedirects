@@ -2,6 +2,9 @@
 
 class ProcessRedirects extends Process {
 
+	// Set a constant since we want to use the name multiple times
+	const PERMISSION_NAME = 'redirects-admin';
+
 	public static function getModuleInfo() {
 		return array(
 			'title' => 'Redirects',
@@ -11,7 +14,7 @@ class ProcessRedirects extends Process {
 			'permanent' => false,
 			'autoload' => true,
 			'singular' => true,
-			'permission' => 'redirects-admin'
+			'permission' => self::PERMISSION_NAME
 		);
 	}
 
@@ -321,6 +324,16 @@ _END;
 		$p->process = $this;
 		$p->save();
 
+		// Create a permission
+		$permission = $this->permissions->get(self::PERMISSION_NAME);
+		if (!$permission->id) {
+			$p = new Permission();
+			$p->name = self::PERMISSION_NAME;
+			$p->title = $this->_('Manage redirects');
+			$p->save();
+		}
+
+
 		$sql = <<< _END
 
 		CREATE TABLE {$this->className} (
@@ -341,6 +354,13 @@ _END;
 	public function ___uninstall() {
 		$p = $this->pages->get('template=admin, name=redirects');
 		$p->delete();
+
+		// Delete the permission if it exists
+		$permission = $this->permissions->get(self::PERMISSION_NAME);
+		if ($permission->id) {
+			$permission->delete();		
+		}
+
 		$this->db->query("DROP TABLE {$this->className}");
 	}
 }

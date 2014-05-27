@@ -91,7 +91,7 @@ class ProcessRedirects extends Process {
 		$field->value = $id;
 		$form->add($field);
 
-		$field = $this->modules->get("InputfieldURL");
+		$field = $this->modules->get("InputfieldText");
 		$field->label = 'Redirect from';
 		$field->description = 'Enter relative url with slashes, like: /summer/ or /products/t-shirt.html.';
 		$field->name = 'redirect_from';

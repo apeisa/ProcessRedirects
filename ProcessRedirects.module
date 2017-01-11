@@ -21,14 +21,17 @@ class ProcessRedirects extends Process {
 	}
 
 	public function ___execute() {
-		$this->setFuel('processHeadline', 'Redirects');
+		$this->setFuel('processHeadline', __('Redirects'));
         $this->config->styles->add($this->config->urls->ProcessRedirects . "ProcessRedirects2.css");
 
-		$description = "<p class='description'>Please note that redirects are active only when there is no page at the same url (so that without redirect it would give 404-error).</p>";
+		$description = "<p class='description'>" . __("Please note that redirects are active only when there is no page at the same url (so that without redirect it would give 404-error).") . "</p>";
 
 		$table = $this->modules->get("MarkupAdminDataTable");
 		$table->setEncodeEntities(false);
-		$table->headerRow(array('Redirect From', 'Redirect To', 'Hits', 'Delete'));
+		$redirectToLabel = __("Redirect To");
+		$hitsLabel = __('Hits');
+		$deleteLabel = __('Delete');
+		$table->headerRow(array(__('Redirect From'), $redirectToLabel, $hitsLabel, $deleteLabel));
 
 		$result = $this->db->query("SELECT * FROM {$this->className} ORDER BY redirect_from");
 
@@ -48,10 +51,10 @@ class ProcessRedirects extends Process {
 		$button = $this->modules->get("InputfieldButton");
 		$button->type = 'submit';
 		$button->id = 'submit_delete';
-		$button->value = 'Remove selected redirects';
+		$button->value = __('Remove selected redirects');
 
-		$table->action(array('Add Redirect' => 'edit/?id=0'));
-		$table->action(array('Import Redirects' => 'import/'));
+		$table->action(array(__('Add Redirect') => 'edit/?id=0'));
+		$table->action(array(__('Import Redirects') => 'import/'));
 
 		// Is there clean way to add button to right side?
 		return $description . "<form id='redirects_form' action='./delete/' method='post'>" .$table->render() . $button->render() . "</form>";
@@ -63,7 +66,7 @@ class ProcessRedirects extends Process {
 	 */
 	public function ___executeEdit() {
 
-		$this->fuel->breadcrumbs->add(new Breadcrumb('../', 'Redirects'));
+		$this->fuel->breadcrumbs->add(new Breadcrumb('../', __('Redirects')));
 
 		$id = (int) $this->input->get->id;
 
@@ -72,14 +75,14 @@ class ProcessRedirects extends Process {
 			$result = $this->db->query("SELECT id, redirect_from, redirect_to FROM {$this->className} WHERE id=$id");
 			list($id, $from, $to) = $result->fetch_array();
 			$to = $this->_makeRedirectToURL($to); 
-			$this->setFuel('processHeadline', "Edit Redirect");
+			$this->setFuel('processHeadline', __("Edit Redirect"));
 
 		} else {
 			// add new record
 			$id = 0;
 			$from = '';
 			$to = '';
-			$this->setFuel('processHeadline', "Add Redirect");
+			$this->setFuel('processHeadline', __("Add Redirect"));
 		}
 
 		$form = $this->modules->get("InputfieldForm");
@@ -92,16 +95,16 @@ class ProcessRedirects extends Process {
 		$form->add($field);
 
 		$field = $this->modules->get("InputfieldText");
-		$field->label = 'Redirect from';
-		$field->description = 'Enter relative url with slashes, like: /summer/ or /products/t-shirt.html.';
+		$field->label = __('Redirect from');
+		$field->description = __('Enter relative url with slashes, like: /summer/ or /products/t-shirt.html.');
 		$field->name = 'redirect_from';
 		$field->value = $from;
 		$form->add($field);
 
 		$field = $this->modules->get("InputfieldPageListSelect");
-		$field->label = 'Select Page to Redirect to';
+		$field->label = __('Select Page to Redirect to');
 		$field->attr('id+name', 'select_page');
-		$field->startLabel = "Select Page";
+		$field->startLabel = __("Select Page");
 		$field->parent_id = 0; // tell it to start from homepage
 
 		if(strpos($to, '/') === 0) {
@@ -114,8 +117,8 @@ class ProcessRedirects extends Process {
 
 
 		$field = $this->modules->get("InputfieldURL");
-		$field->label = 'or type URL here';
-		$field->description = 'Enter a valid URL, i.e. www.otherdomain.com/dir/ or relative url like /season/summer/';
+		$field->label = __('or type URL here');
+		$field->description = __('Enter a valid URL, i.e. www.otherdomain.com/dir/ or relative url like /season/summer/');
 		$field->name = 'redirect_to';
 		$field->id = 'redirect_to';
 		if($page->id || $id == 0) $field->collapsed = 1;
@@ -137,9 +140,9 @@ _END;
 		$field = $this->modules->get("InputfieldButton");
 		$field->type = 'submit';
 		if($id > 0 ) {
-			$field->value = 'Update Redirect';
+			$field->value = __('Update Redirect');
 		} else {
-			$field->value = 'Add New Redirect';
+			$field->value = __('Add New Redirect');
 		}
 
 		$form->add($field);
@@ -149,7 +152,7 @@ _END;
 
 	public function ___executeImport() {
 
-		$this->fuel->breadcrumbs->add(new Breadcrumb('../', 'Redirects'));
+		$this->fuel->breadcrumbs->add(new Breadcrumb('../', __('Redirects')));
 		$this->setFuel('processHeadline', "Import Redirects");
 
 		$form = $this->modules->get("InputfieldForm");
@@ -157,15 +160,15 @@ _END;
 		$form->action = '../savearray/';
 
 		$field = $this->modules->get("InputfieldTextarea");
-		$field->label = 'List of redirects';
-		$field->description = "Comma separeted list, where each redirect is on one line. ie. /campaign/,/products/tools/offers/ or /campaign/,www.someotherdomain.com";
+		$field->label = __('List of redirects');
+		$field->description = __("Comma separeted list, where each redirect is on one line. ie. /campaign/,/products/tools/offers/ or /campaign/,www.someotherdomain.com");
 		$field->name = 'redirects';
 		$field->rows = 15;
 		$form->add($field);
 
 		$field = $this->modules->get("InputfieldButton");
 		$field->type = 'submit';
-		$field->value = 'Add New Redirects';
+		$field->value = __('Add New Redirects');
 		$form->add($field);
 
 		return $form->render();
@@ -188,7 +191,7 @@ _END;
 
 		$this->_saveRedirect($from, $to, $id);
 
-		$this->message("Saved redirect from \"$from\" to \"$to\".");
+		$this->message(__("Saved redirect from \"$from\" to \"$to\"."));
 		$this->session->redirect("../"); // back to list
 
 	}

@@ -5,7 +5,7 @@ class ProcessRedirects extends Process {
 	public static function getModuleInfo() {
 		return array(
 			'title' => 'Redirects',
-			'summary' => 'Manage redirects',
+			'summary' => __('Manage redirects'),
 			'href' => 'http://processwire.com/talk/index.php/topic,171.0.html',
 			'version' => 100,
 			'permanent' => false,

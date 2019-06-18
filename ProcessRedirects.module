@@ -7,7 +7,7 @@ class ProcessRedirects extends Process {
 			'title' => 'Redirects',
 			'summary' => __('Manage redirects'),
 			'href' => 'http://processwire.com/talk/index.php/topic,171.0.html',
-			'version' => 101,
+			'version' => 102,
 			'permanent' => false,
 			'autoload' => true,
 			'singular' => true,
@@ -229,15 +229,21 @@ _END;
 
 		$count = 0;
 
-		if(!is_array($this->input->post->delete) || empty($this->input->post->delete)) {
+		if(!$this->input->post->delete) {
 			$this->message("Nothing to delete");
 			$this->session->redirect("../"); // back to list
-		}
-
-		foreach($this->input->post->delete as $id) {
-			$id = (int) $id;
-			$this->db->query("DELETE FROM {$this->className} WHERE id=$id");
-			$count++;
+		} else {
+			if (is_array($this->input->post->delete)) {
+				foreach($this->input->post->delete as $id) {
+					$id = (int) $id;
+					$this->db->query("DELETE FROM {$this->className} WHERE id=$id");
+					$count++;
+				}
+			} else {
+				$id = (int) $this->input->post->delete;
+				$this->db->query("DELETE FROM {$this->className} WHERE id=$id");
+				$count++;
+			}
 		}
 
 		$this->message("Deleted " . $count . " redirect(s)");

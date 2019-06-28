@@ -30,9 +30,10 @@ class ProcessRedirects extends Process {
 		$table = $this->modules->get("MarkupAdminDataTable");
 		$table->setEncodeEntities(false);
 		$redirectToLabel = __("Redirect To");
+		$testLabel = __("Test Redirect");
 		$hitsLabel = __('Hits');
 		$deleteLabel = __('Delete');
-		$table->headerRow(array(__('Redirect From'), $redirectToLabel, $hitsLabel, $deleteLabel));
+		$table->headerRow(array(__('Redirect From'), $redirectToLabel, $testLabel, $hitsLabel, $deleteLabel));
 
 		$result = $this->db->query("SELECT * FROM {$this->className} ORDER BY redirect_from");
 
@@ -44,6 +45,7 @@ class ProcessRedirects extends Process {
 			 $table->row(array(
 				 $row['redirect_from'] => "edit/?id=$row[id]",
 				 $row['redirect_to'] => "edit/?id=$row[id]",
+				 "<a target='_blank' href='".substr($this->config->urls->root, 0, -1)."$row[redirect_from]'>Test</a>",
 				 $row['counter'],
 				 "<input type='checkbox' name='delete[]' value='$row[id]' />"
 				 ));

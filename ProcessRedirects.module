@@ -43,8 +43,8 @@ class ProcessRedirects extends Process {
 
 			 // output in table rows with edit link and delete checkbox?
 			 $table->row(array(
-				 $row['redirect_from'] => "edit/?id=$row[id]",
-				 $row['redirect_to'] => "edit/?id=$row[id]",
+				 "<a href='edit/?id=$row[id]'>{$row['redirect_from']}</a>",
+				 "<a href='edit/?id=$row[id]'>{$row['redirect_to']}</a>",
 				 "<a target='_blank' href='".substr($this->config->urls->root, 0, -1)."$row[redirect_from]'>Test</a>",
 				 $row['counter'],
 				 "<input type='checkbox' name='delete[]' value='$row[id]' />"

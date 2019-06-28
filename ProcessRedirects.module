@@ -140,11 +140,15 @@ _END;
 
 		$field = $this->modules->get("InputfieldButton");
 		$field->type = 'submit';
+
+		/*
 		if($id > 0 ) {
 			$field->value = __('Update Redirect');
 		} else {
 			$field->value = __('Add New Redirect');
 		}
+		*/
+		$field->value = __('Save');
 
 		$form->add($field);
 

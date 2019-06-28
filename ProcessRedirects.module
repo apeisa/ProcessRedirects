@@ -25,7 +25,7 @@ class ProcessRedirects extends Process {
 		$this->setFuel('processHeadline', __('Redirects'));
         $this->config->styles->add($this->config->urls->ProcessRedirects . "ProcessRedirects2.css");
 
-		$description = "<p class='description'>" . __("Please note that redirects are active only when there is no page at the same URL (so that without redirect it would give 404-error).") . "</p>";
+		$description = "<p class='description'>" . __("Note: The Redirect From URL must be unique to all existing page paths.") . "</p>";
 
 		$table = $this->modules->get("MarkupAdminDataTable");
 		$table->setEncodeEntities(false);

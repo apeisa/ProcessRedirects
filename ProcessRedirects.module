@@ -98,14 +98,14 @@ class ProcessRedirects extends Process {
 		$form->add($field);
 
 		$field = $this->modules->get("InputfieldText");
-		$field->label = __('Redirect from');
+		$field->label = __('Redirect From');
 		$field->description = __('Enter relative URL with slashes, like: /summer/ or /products/t-shirt.html.');
 		$field->name = 'redirect_from';
 		$field->value = $from;
 		$form->add($field);
 
 		$field = $this->modules->get("InputfieldPageListSelect");
-		$field->label = __('Select Page to Redirect to');
+		$field->label = __('Select Page to Redirect To');
 		$field->attr('id+name', 'select_page');
 		$field->startLabel = __("Select Page");
 		$field->parent_id = 0; // tell it to start from homepage

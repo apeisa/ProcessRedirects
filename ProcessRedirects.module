@@ -6,7 +6,7 @@ class ProcessRedirects extends Process {
 		return array(
 			'title' => 'Redirects',
 			'summary' => __('Manage redirects'),
-			'href' => 'http://processwire.com/talk/index.php/topic,171.0.html',
+			'href' => 'https://processwire.com/talk/topic/148-release-redirects/',
 			'version' => 102,
 			'permanent' => false,
 			'autoload' => true,

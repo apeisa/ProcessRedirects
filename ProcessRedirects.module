@@ -199,6 +199,11 @@ _END;
 			$this->session->redirect("../"); // back to list
 		}
 
+		elseif ($this->pages->getByPath($this->sanitizer->path($from))->id) {
+			$this->error("The Redirect From URL already exists as a page path.  Redirect not added.");
+			$this->session->redirect("../"); // back to list
+		}
+
 		$this->_saveRedirect($from, $to, $id);
 
 		$this->message(__("Saved redirect from \"$from\" to \"$to\"."));

@@ -162,6 +162,8 @@ _END;
 
 		$field = $this->modules->get("InputfieldTextarea");
 		$field->label = __('List of redirects');
+		// note: technically speaking, commas are valid characters in URLs, so this may throw off the importer if a URL contains a comma
+		// more info: https://stackoverflow.com/a/1547940/1397709
 		$field->description = __("Comma separeted list, where each redirect is on one line. ie. /campaign/,/products/tools/offers/ or /campaign/,www.someotherdomain.com");
 		$field->name = 'redirects';
 		$field->rows = 15;

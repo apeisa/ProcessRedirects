@@ -25,7 +25,7 @@ class ProcessRedirects extends Process {
 		$this->setFuel('processHeadline', __('Redirects'));
         $this->config->styles->add($this->config->urls->ProcessRedirects . "ProcessRedirects2.css");
 
-		$description = "<p class='description'>" . __("Please note that redirects are active only when there is no page at the same url (so that without redirect it would give 404-error).") . "</p>";
+		$description = "<p class='description'>" . __("Please note that redirects are active only when there is no page at the same URL (so that without redirect it would give 404-error).") . "</p>";
 
 		$table = $this->modules->get("MarkupAdminDataTable");
 		$table->setEncodeEntities(false);
@@ -97,7 +97,7 @@ class ProcessRedirects extends Process {
 
 		$field = $this->modules->get("InputfieldText");
 		$field->label = __('Redirect from');
-		$field->description = __('Enter relative url with slashes, like: /summer/ or /products/t-shirt.html.');
+		$field->description = __('Enter relative URL with slashes, like: /summer/ or /products/t-shirt.html.');
 		$field->name = 'redirect_from';
 		$field->value = $from;
 		$form->add($field);
@@ -119,7 +119,7 @@ class ProcessRedirects extends Process {
 
 		$field = $this->modules->get("InputfieldURL");
 		$field->label = __('or type URL here');
-		$field->description = __('Enter a valid URL, i.e. www.otherdomain.com/dir/ or relative url like /season/summer/');
+		$field->description = __('Enter a valid URL, i.e. www.otherdomain.com/dir/ or relative URL like /season/summer/');
 		$field->name = 'redirect_to';
 		$field->id = 'redirect_to';
 		if($page->id || $id == 0) $field->collapsed = 1;
@@ -297,7 +297,7 @@ _END;
 		$from = $this->_addUrlSlashes($from);
 		$to = $this->sanitizer->url($to);
 
-		// Not external url, if it starts with slash
+		// Not external URL, if it starts with slash
 		if(substr($to, 0, 1) == "/") {
 			// if the redirect_to maps to a page, then store it's ID instead
 			if(($page = $this->pages->get($to)) && $page->id) $to = '^' . $page->id;

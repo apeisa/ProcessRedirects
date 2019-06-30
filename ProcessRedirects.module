@@ -7,7 +7,7 @@ class ProcessRedirects extends Process {
 			'title' => 'Redirects',
 			'summary' => __('Manage redirects'),
 			'href' => 'https://processwire.com/talk/topic/148-release-redirects/',
-			'version' => 102,
+			'version' => 103,
 			'permanent' => false,
 			'autoload' => true,
 			'singular' => true,

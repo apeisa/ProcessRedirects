@@ -6,12 +6,13 @@ class ProcessRedirects extends Process {
 		return array(
 			'title' => 'Redirects',
 			'summary' => __('Manage redirects'),
-			'href' => 'http://processwire.com/talk/index.php/topic,171.0.html',
-			'version' => 102,
+			'href' => 'https://processwire.com/talk/topic/148-release-redirects/',
+			'version' => 103,
 			'permanent' => false,
 			'autoload' => true,
 			'singular' => true,
-			'permission' => 'redirects-admin'
+			'permission' => 'redirects-admin',
+			'icon' => 'exchange', 
 		);
 	}
 
@@ -24,14 +25,15 @@ class ProcessRedirects extends Process {
 		$this->setFuel('processHeadline', __('Redirects'));
         $this->config->styles->add($this->config->urls->ProcessRedirects . "ProcessRedirects2.css");
 
-		$description = "<p class='description'>" . __("Please note that redirects are active only when there is no page at the same url (so that without redirect it would give 404-error).") . "</p>";
+		$description = "<p class='description'>" . __("Note: The Redirect From URL must be unique to all existing page paths.") . "</p>";
 
 		$table = $this->modules->get("MarkupAdminDataTable");
 		$table->setEncodeEntities(false);
 		$redirectToLabel = __("Redirect To");
+		$testLabel = __("Test Redirect");
 		$hitsLabel = __('Hits');
 		$deleteLabel = __('Delete');
-		$table->headerRow(array(__('Redirect From'), $redirectToLabel, $hitsLabel, $deleteLabel));
+		$table->headerRow(array(__('Redirect From'), $redirectToLabel, $testLabel, $hitsLabel, $deleteLabel));
 
 		$result = $this->db->query("SELECT * FROM {$this->className} ORDER BY redirect_from");
 
@@ -41,8 +43,9 @@ class ProcessRedirects extends Process {
 
 			 // output in table rows with edit link and delete checkbox?
 			 $table->row(array(
-				 $row['redirect_from'] => "edit/?id=$row[id]",
-				 $row['redirect_to'] => "edit/?id=$row[id]",
+				 "<a href='edit/?id=$row[id]'>{$row['redirect_from']}</a>",
+				 "<a href='edit/?id=$row[id]'>{$row['redirect_to']}</a>",
+				 "<a target='_blank' href='".substr($this->config->urls->root, 0, -1)."$row[redirect_from]'>Test</a>",
 				 $row['counter'],
 				 "<input type='checkbox' name='delete[]' value='$row[id]' />"
 				 ));
@@ -95,14 +98,15 @@ class ProcessRedirects extends Process {
 		$form->add($field);
 
 		$field = $this->modules->get("InputfieldText");
-		$field->label = __('Redirect from');
-		$field->description = __('Enter relative url with slashes, like: /summer/ or /products/t-shirt.html.');
+		$field->label = __('Redirect From');
+		$field->description = __('Enter relative URL with slashes.');
+		$field->notes = __("Example: /summer/\nExample: /products/t-shirt.html");
 		$field->name = 'redirect_from';
 		$field->value = $from;
 		$form->add($field);
 
 		$field = $this->modules->get("InputfieldPageListSelect");
-		$field->label = __('Select Page to Redirect to');
+		$field->label = __('Select Page to Redirect To');
 		$field->attr('id+name', 'select_page');
 		$field->startLabel = __("Select Page");
 		$field->parent_id = 0; // tell it to start from homepage
@@ -118,7 +122,7 @@ class ProcessRedirects extends Process {
 
 		$field = $this->modules->get("InputfieldURL");
 		$field->label = __('or type URL here');
-		$field->description = __('Enter a valid URL, i.e. www.otherdomain.com/dir/ or relative url like /season/summer/');
+		$field->description = __('Enter a valid URL, i.e. www.otherdomain.com/dir/ or relative URL like /season/summer/');
 		$field->name = 'redirect_to';
 		$field->id = 'redirect_to';
 		if($page->id || $id == 0) $field->collapsed = 1;
@@ -139,11 +143,15 @@ _END;
 
 		$field = $this->modules->get("InputfieldButton");
 		$field->type = 'submit';
+
+		/*
 		if($id > 0 ) {
 			$field->value = __('Update Redirect');
 		} else {
 			$field->value = __('Add New Redirect');
 		}
+		*/
+		$field->value = __('Save');
 
 		$form->add($field);
 
@@ -161,6 +169,8 @@ _END;
 
 		$field = $this->modules->get("InputfieldTextarea");
 		$field->label = __('List of redirects');
+		// note: technically speaking, commas are valid characters in URLs, so this may throw off the importer if a URL contains a comma
+		// more info: https://stackoverflow.com/a/1547940/1397709
 		$field->description = __("Comma separeted list, where each redirect is on one line. ie. /campaign/,/products/tools/offers/ or /campaign/,www.someotherdomain.com");
 		$field->name = 'redirects';
 		$field->rows = 15;
@@ -186,6 +196,11 @@ _END;
 
 		if ($from == '' || $to == '') {
 			$this->error("No redirect created, please check your values.");
+			$this->session->redirect("../"); // back to list
+		}
+
+		elseif ($this->pages->getByPath($this->sanitizer->path($from))->id) {
+			$this->error("The Redirect From URL already exists as a page path.  Redirect not added.");
 			$this->session->redirect("../"); // back to list
 		}
 
@@ -296,7 +311,7 @@ _END;
 		$from = $this->_addUrlSlashes($from);
 		$to = $this->sanitizer->url($to);
 
-		// Not external url, if it starts with slash
+		// Not external URL, if it starts with slash
 		if(substr($to, 0, 1) == "/") {
 			// if the redirect_to maps to a page, then store it's ID instead
 			if(($page = $this->pages->get($to)) && $page->id) $to = '^' . $page->id;

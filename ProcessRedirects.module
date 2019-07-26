@@ -271,7 +271,7 @@ _END;
         $parsed_url = parse_url($_SERVER['REQUEST_URI']);
 
         $url    = $parsed_url['path'];
-        $query  = $parsed_url['query'];
+        $query  = isset($parsed_url['query']) ? $parsed_url['query'] : '';
 
 		// if installed in a subdirectory, make $url relative to the directory ProcessWire is installed in
 		if($this->config->urls->root != '/') {
@@ -293,7 +293,8 @@ _END;
 			$redirect_to = $this->_makeRedirectToURL($redirect_to, true); 
 			$sql = "UPDATE {$this->className} SET counter = counter +1 WHERE id = $id";
 			$this->db->query($sql);
-			$this->session->redirect($redirect_to . "?$query");
+			if($query) $redirect_to .= "?$query";
+			$this->session->redirect($redirect_to);
 		}
 	}
 

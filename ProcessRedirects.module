@@ -7,7 +7,7 @@ class ProcessRedirects extends Process {
 			'title' => 'Redirects',
 			'summary' => __('Manage redirects'),
 			'href' => 'https://processwire.com/talk/topic/148-release-redirects/',
-			'version' => 103,
+			'version' => 104,
 			'permanent' => false,
 			'autoload' => true,
 			'singular' => true,
@@ -270,8 +270,11 @@ _END;
         // determine the URL that wasn't found
         $parsed_url = parse_url($_SERVER['REQUEST_URI']);
 
-        $url    = $parsed_url['path'];
-        $query  = $parsed_url['query'];
+		$url    = $parsed_url['path'];
+		if (isset($parsed_url['query']))
+        	$query = $parsed_url['query'];
+		else 
+			$query = false;
 
 		// if installed in a subdirectory, make $url relative to the directory ProcessWire is installed in
 		if($this->config->urls->root != '/') {
@@ -293,7 +296,11 @@ _END;
 			$redirect_to = $this->_makeRedirectToURL($redirect_to, true); 
 			$sql = "UPDATE {$this->className} SET counter = counter +1 WHERE id = $id";
 			$this->db->query($sql);
-			$this->session->redirect($redirect_to . "?$query");
+
+			if ($query)
+				$this->session->redirect($redirect_to . "?$query");
+			else
+				$this->session->redirect($redirect_to);
 		}
 	}
 

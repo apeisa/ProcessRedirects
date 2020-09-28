@@ -127,11 +127,11 @@ class ProcessRedirects extends Process {
 		// check if we're editing an existing record
 		if ($id > 0) {
 			$this->headline($this->_('Edit Redirect'));
-			$stmt = $this->database->prepare('
+			$stmt = $this->database->prepare("
 				SELECT id, redirect_from, redirect_to
-				FROM ' . self::TABLE_NAME . '
+				FROM " . self::TABLE_NAME . "
 				WHERE id = :id
-			');
+			");
 			$stmt->bindParam('id', $id, \PDO::PARAM_INT);
 			$stmt->execute();
 			$redirect = $stmt->fetch(\PDO::FETCH_NUM);
@@ -364,10 +364,10 @@ class ProcessRedirects extends Process {
 		}
 
 		// prepare delete statement
-		$stmt = $this->database->prepare('
-			DELETE FROM ' . self::TABLE_NAME . '
+		$stmt = $this->database->prepare("
+			DELETE FROM " . self::TABLE_NAME . "
 			WHERE id = :id
-		');
+		");
 
 		// delete items either based on an array of redirect IDs or a single redirect ID
 		if (is_array($this->input->post->delete)) {
@@ -418,31 +418,29 @@ class ProcessRedirects extends Process {
 		// grab query string
 		$query = $parsed_url['query'] ?? null;
 
-		// we'll check the DB against trailing slash version and non-trailing slash version
-		$url = rtrim($url, '/');
-		$url2 = $url . '/';
-
 		// now see if it's in the DB
-		$stmt = $this->database->prepare('
+		$stmt = $this->database->prepare("
 			SELECT id, redirect_to
-			FROM ' . self::TABLE_NAME . '
-			WHERE redirect_from = :url OR redirect_from = :url2
-		');
+			FROM " . self::TABLE_NAME . "
+			WHERE :url LIKE REPLACE(TRIM(TRAILING '/' FROM redirect_from), '*', '%')
+			LIMIT 1
+		");
 		$stmt->bindParam('url', $url, \PDO::PARAM_STR);
-		$stmt->bindParam('url2', $url2, \PDO::PARAM_STR);
 		$stmt->execute();
 		$result = $stmt->fetch(\PDO::FETCH_NUM);
+
+		// debug: die($stmt->debugDumpParams());
 
 		// bail out early if there was no match
 		if ($result === false) return;
 
 		// if there is a match, update hit counter and perform a redirect
 		list($id, $redirect_to) = $result;
-		$update_stmt = $this->database->prepare('
-			UPDATE ' . self::TABLE_NAME . '
+		$update_stmt = $this->database->prepare("
+			UPDATE " . self::TABLE_NAME . "
 			SET counter = counter + 1
 			WHERE id = :id
-		');
+		");
 		$update_stmt->bindParam('id', $id, \PDO::PARAM_INT);
 		$update_stmt->execute();
 		$redirect_to = $this->makeRedirectToURL($redirect_to, true);
@@ -502,22 +500,22 @@ class ProcessRedirects extends Process {
 
 		// if 'id' argument is zero, we're adding a new redirect
 		if ($id === 0) {
-			$stmt = $this->database->prepare('
-				INSERT INTO ' . self::TABLE_NAME . '
+			$stmt = $this->database->prepare("
+				INSERT INTO " . self::TABLE_NAME . "
 				SET redirect_from = :from, redirect_to = :to
 				ON DUPLICATE KEY UPDATE id = id, redirect_from = redirect_from, redirect_to = redirect_to
-			');
+			");
 			$stmt->bindParam('from', $from, \PDO::PARAM_STR);
 			$stmt->bindParam('to', $to, \PDO::PARAM_STR);
 			return $stmt->execute();
 		}
 
 		// nope, looks like we're updating existing redirect
-		$stmt = $this->database->prepare('
-			UPDATE ' . self::TABLE_NAME . '
+		$stmt = $this->database->prepare("
+			UPDATE " . self::TABLE_NAME . "
 			SET redirect_from = :from, redirect_to = :to
 			WHERE id = :id
-		');
+		");
 		$stmt->bindParam('from', $from, \PDO::PARAM_STR);
 		$stmt->bindParam('to', $to, \PDO::PARAM_STR);
 		$stmt->bindParam('id', $id, \PDO::PARAM_INT);
@@ -554,16 +552,16 @@ class ProcessRedirects extends Process {
 		$p->process = $this;
 		$p->save();
 
-		$this->database->query('
-			CREATE TABLE ' . self::TABLE_NAME . ' (
+		$this->database->query("
+			CREATE TABLE " . self::TABLE_NAME . " (
 				id int unsigned NOT NULL auto_increment,
 				counter int unsigned DEFAULT 0,
-				redirect_from varchar(255) NOT NULL DEFAULT "",
-				redirect_to varchar(255) NOT NULL DEFAULT "",
+				redirect_from varchar(255) NOT NULL DEFAULT '',
+				redirect_to varchar(255) NOT NULL DEFAULT '',
 				PRIMARY KEY(id),
 				UNIQUE KEY(redirect_from)
 			) ENGINE = MYISAM;
-		');
+		");
 	}
 
 	/**
@@ -576,8 +574,6 @@ class ProcessRedirects extends Process {
 		if ($p->id) {
 			$p->delete();
 		}
-		$this->database->query('
-			DROP TABLE IF EXISTS ' . self::TABLE_NAME
-		);
+		$this->database->query("DROP TABLE IF EXISTS " . self::TABLE_NAME);
 	}
 }

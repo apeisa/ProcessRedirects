@@ -94,14 +94,11 @@ class ProcessRedirects extends Process {
 		$button->id = 'submit_delete';
 		$button->value = $this->_('Remove selected redirects');
 
-		return '<p class="description">'
-			. $this->_('Note: The Redirect From URL must be unique to all existing page paths.')
-			. '</p>'
-			. "<form id='redirects_form' action='./delete/' method='post'>"
+		return '<form id="redirects_form" action="./delete/" method="post">'
 			. $this->session->CSRF->renderInput()
 			. $table->render()
 			. $button->render()
-			. "</form>";
+			. '</form>';
 	}
 
 	/**
@@ -118,6 +115,9 @@ class ProcessRedirects extends Process {
 		// add breadcrumb and set page headline
 		$this->breadcrumb('../', $this->_('Redirects'));
 		$this->headline($this->_('Add Redirect'));
+
+		// load vex
+		$this->wire('modules')->get('JqueryUI')->use('vex');
 
 		// default settings
 		$id = (int) $this->input->get->id ?: 0;
@@ -145,6 +145,7 @@ class ProcessRedirects extends Process {
 		/** @var InputfieldForm */
 		$form = $this->modules->get('InputfieldForm');
 		$form->method = 'post';
+		$form->id = 'ProcessRedirectsEditForm';
 		$form->action = '../save/';
 
 		/** @var InputfieldHidden */
@@ -156,8 +157,12 @@ class ProcessRedirects extends Process {
 		/** @var InputfieldText */
 		$field = $this->modules->get('InputfieldText');
 		$field->label = $this->_('Redirect From');
-		$field->description = $this->_('Enter relative URL with slashes.');
-		$field->notes = $this->_("Example: /summer/\nExample: /products/t-shirt.html");
+		$field->required = true;
+		$field->requiredAttr = true;
+		$field->description = $this->_('Enter relative URL with slashes.')
+			. "\n\n"
+			. $this->_("Example: /summer/\nExample: /products/t-shirt.html");
+		$field->notes = $this->_('Note: Redirect From must not match any existing, viewable page. Existing page takes precedence over redirect, in which case the redirect is effectively rendered inactive.');
 		$field->name = 'redirect_from';
 		$field->value = $from;
 		$form->add($field);
@@ -195,11 +200,20 @@ class ProcessRedirects extends Process {
 		$field->value = $this->_('Save');
 		$form->add($field);
 
-		// automatically populate the redirect_to field with the URL of the selected page
+		// populate the redirect_to field with the URL of the selected page and validate form values before submitting
 		$script = '
 		<script>
-		$("#select_page").on(\'pageSelected\', function(event, data) {
+		$("#select_page").on("pageSelected", function(event, data) {
 			if (data.url.length) $("#redirect_to").val(data.url);
+		});
+		$("#ProcessRedirectsEditForm").on("submit", function() {
+			if ($("#redirect_to").val() == "") {
+				ProcessWire.alert("' . $this->_('Please select target page.') . '");
+				if (typeof Inputfields === "object") {
+					Inputfields.highlight("select_page");
+				}
+				return false;
+			}
 		});
 		</script>
 		';

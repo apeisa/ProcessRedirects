@@ -82,7 +82,7 @@ class ProcessRedirects extends Process {
 			$table->row([
 				'<a href="edit/?id=' . (int) $redirect['id'] . '">' . $redirect['redirect_from'] . '</a>',
 				'<a href="edit/?id=' . (int) $redirect['id'] . '">' . $redirect['redirect_to'] . '</a>',
-				'<a target="_blank" href="' . substr($this->config->urls->root, 0, -1) . $redirect['redirect_from'] . '">' . $this->_('Test') . '</a>',
+				'<a target="_blank" class="pw-panel pw-panel-right" data-panel-width="75%" href="' . substr($this->config->urls->root, 0, -1) . $redirect['redirect_from'] . '">' . $this->_('Test') . '</a>',
 				(int) $redirect['counter'],
 				'<input type="checkbox" name="delete[]" value="' . (int) $redirect['id'] . '">',
 			]);
@@ -227,8 +227,8 @@ class ProcessRedirects extends Process {
 		/** @var InputfieldTextarea */
 		$field = $this->modules->get('InputfieldTextarea');
 		$field->label = $this->_('List of redirects');
-		// note: technically speaking, commas are valid characters in URLs, so this may throw off the importer if a URL contains a comma
-		// more info: https://stackoverflow.com/a/1547940/1397709
+		// note: technically speaking commas are valid characters in URLs, so this may throw off the importer if a URL
+		// contains a comma (see https://stackoverflow.com/a/1547940/1397709 for details).
 		$field->description = $this->_('Comma separeted list, where each redirect is on one line. ie. /campaign/,/products/tools/offers/ or /campaign/,www.someotherdomain.com');
 		$field->name = 'redirects';
 		$field->rows = 15;
@@ -409,7 +409,7 @@ class ProcessRedirects extends Process {
 		$url2 = $url . '/';
 
 		// now see if it's in the DB
-		$stmt = $this->databaes->prepare('
+		$stmt = $this->database->prepare('
 			SELECT id, redirect_to
 			FROM ' . self::TABLE_NAME . '
 			WHERE redirect_from = :url OR redirect_from = :url2
@@ -417,7 +417,7 @@ class ProcessRedirects extends Process {
 		$stmt->bindParam('url', $url, \PDO::PARAM_STR);
 		$stmt->bindParam('url2', $url2, \PDO::PARAM_STR);
 		$stmt->execute();
-		$result = $stmt->fetch(\PDO::FETCH_ASSOC);
+		$result = $stmt->fetch(\PDO::FETCH_NUM);
 
 		// bail out early if there was no match
 		if ($result === false) return;
@@ -436,43 +436,58 @@ class ProcessRedirects extends Process {
 	}
 
 	/**
-	 * Prepare redirect target URL
+	 * Convert stored value to target URL
 	 *
+	 * This method detects stored page IDs and converts them to URLs at the time of request. At least for now it won't
+	 * modify existing URLs in any way.
+	 *
+	 * If second argument ($http) is set as 'true' and first argument ($to) matches an existing page, this method will
+	 * return the full httpUrl for the page; otherwise we'll return the (relative) path to the page.
+	 *
+	 * @param string $to Target URL, or a page ID with a caret prefix
+	 * @param bool $http Return httpUrl property instead of path?
 	 * @return string
 	 */
-	private function makeRedirectToURL($to, $http = false): string {
+	private function makeRedirectToURL(string $to, bool $http = false): string {
 
-		// if redirect_to is a page ID, convert it to be the URL to the page
-		if ($to[0] != '^') return $to;
-		$page = $this->pages->get((int) substr($to, 1));
+		// bail out early if target URL doesn't start with a caret (in which case it's already an URL)
+		if (strpos($to, '^') !== 0) return $to;
 
-		// we get httpUrl during actual redirects so that it will redirect to http/https depending on template setting.
-		// this prevents ProcessWire from doing an extra redirect to the https version if the template calls for it.
-		if ($page->id) $to = $page->get($http ? 'httpUrl' : 'path');
+		// get a page matching the stored ID value
+		$target_page = $this->pages->get((int) substr($to, 1));
+
+		// if a page was found, return full httpUrl or relative path depending on provided arguments
+		if ($target_page->id) {
+			$to = $target_page->get($http ? 'httpUrl' : 'path');
+		}
 
 		return $to;
 	}
 
 	/**
-	 * Save a redirect into database
+	 * Save a redirect into the database
 	 *
+	 * @param string $from
+	 * @param string $to
+	 * @param int $id
 	 * @return bool
 	 */
-	private function saveRedirect($from, $to, $id = 0): bool {
+	private function saveRedirect(string $from, string $to, int $id = 0): bool {
 
 		$from = $this->addUrlSlashes($from);
 		$to = $this->sanitizer->url($to);
 
-		// not external URL if it starts with a slash
-		if (substr($to, 0, 1) == "/") {
-			// if the redirect_to maps to a page, then store it's ID instead
-			if (($page = $this->pages->get($to)) && $page->id) {
-				$to = '^' . $page->id;
+		// if target address is a relative path (local URL) and points to an existing page, store a page ID instead;
+		// we're also going to add a caret prefix (^[page ID]) to make the stored ID easily distinguishable
+		if (strpos($to, '/') === 0) {
+			$target_page = $this->pages->get($to);
+			if ($target_page->id && !$target_page->isTrash()) {
+				$to = '^' . $target_page->id;
 			}
 		}
 
-		if ($id == 0) {
-			// add new redirect
+		// if 'id' argument is zero, we're adding a new redirect
+		if ($id === 0) {
 			$stmt = $this->database->prepare('
 				INSERT INTO ' . self::TABLE_NAME . '
 				SET redirect_from = :from, redirect_to = :to
@@ -483,7 +498,7 @@ class ProcessRedirects extends Process {
 			return $stmt->execute();
 		}
 
-		// update existing redirect
+		// nope, looks like we're updating existing redirect
 		$stmt = $this->database->prepare('
 			UPDATE ' . self::TABLE_NAME . '
 			SET redirect_from = :from, redirect_to = :to

@@ -134,7 +134,7 @@ class ProcessRedirects extends Process {
 			');
 			$stmt->bindParam('id', $id, \PDO::PARAM_INT);
 			$stmt->execute();
-			$redirect = $stmt->fetch(\PDO::FETCH_ASSOC);
+			$redirect = $stmt->fetch(\PDO::FETCH_NUM);
 			if ($redirect === false) {
 				throw new Wire404Exception($this->_('Redirect not found.'));
 			}

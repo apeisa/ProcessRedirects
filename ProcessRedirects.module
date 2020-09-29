@@ -10,7 +10,16 @@ class ProcessRedirects extends Process {
 	 *
 	 * @var string
 	 */
-	const TABLE_NAME = 'ProcessRedirects'; 
+	const TABLE_NAME = 'ProcessRedirects';
+
+	/**
+	 * Debug mode
+	 *
+	 * This is enabled by manually modifying this property. TEMPORARY, FOR DEVLEOPMENT USE ONLY.
+	 *
+	 * @var bool
+	 */
+	protected $debug_mode = false;
 
 	/**
 	 * Get module info
@@ -167,7 +176,7 @@ class ProcessRedirects extends Process {
 			. "\n\n"
 			. $this->_("Example: /summer/\nExample: /products/t-shirt.html");
 		$field->notes = $this->_('Note: Redirect From must not match any existing, viewable page. Existing page takes precedence over redirect, in which case the redirect is effectively rendered inactive.');
-		$field->name = 'redirect_from';
+		$field->attr('id+name', 'redirect_from');
 		$field->value = $from;
 		$form->add($field);
 
@@ -204,7 +213,7 @@ class ProcessRedirects extends Process {
 		$field->value = $this->_('Save');
 		$form->add($field);
 
-		return $form->render() . $script;
+		return $form->render();
 	}
 
 	/**
@@ -402,7 +411,7 @@ class ProcessRedirects extends Process {
 
 		// determine the URL that wasn't found
 		$parsed_url = parse_url($_SERVER['REQUEST_URI']);
-		$url = $parsed_url['path'];
+		$url = rtrim($parsed_url['path'], '/');
 
 		// if installed in a subdirectory, make $url relative to the directory ProcessWire is installed in
 		if ($this->config->urls->root != '/') {
@@ -423,7 +432,15 @@ class ProcessRedirects extends Process {
 		$stmt->execute();
 		$result = $stmt->fetch(\PDO::FETCH_NUM);
 
-		// debug: die($stmt->debugDumpParams());
+		// debug mode?
+		if ($this->debug_mode) {
+			echo "<pre>";
+			$stmt->debugDumpParams();
+			if ($result === false) {
+				die("\nMISS");
+			}
+			die("\nHIT: " . var_export($result, true));
+		}
 
 		// bail out early if there was no match
 		if ($result === false) return;

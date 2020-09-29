@@ -7,7 +7,7 @@ $(function() {
 			if (redirect_from[0] != "/") {
 				redirect_from = "/" + redirect_from;
 			}
-			$(this).val(encodeURI(redirect_from));
+			$(this).val(encodeURI(decodeURI(redirect_from)));
 		}
 	});
 

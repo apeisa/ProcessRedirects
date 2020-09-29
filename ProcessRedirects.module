@@ -338,7 +338,7 @@ class ProcessRedirects extends Process {
 				if ($from != '' || $to != '') {
 					// partial row, log failure
 					$this->error(sprintf(
-						$this->_('Redirect skipped due to malformed input: %s'),
+						$this->_('Malformed input, redirect not added: %s'),
 						$redirect
 					));
 					++$count[0];
@@ -349,7 +349,7 @@ class ProcessRedirects extends Process {
 			// skip duplicates
 			if (array_key_exists($from, $paths)) {
 				$this->error(sprintf(
-					$this->_('Redirect skipped due to duplicate from path: %s'),
+					$this->_('Duplicate from path, redirect not added: %s'),
 					$redirect
 				));
 				++$count[0];
@@ -429,8 +429,6 @@ class ProcessRedirects extends Process {
 	 * the 404 page.
 	 *
 	 * @param HookEvent $event
-	 *
-	 * @todo add wildcard support
 	 */
 	public function checkRedirects(HookEvent $event): void {
 
@@ -522,7 +520,7 @@ class ProcessRedirects extends Process {
 	 */
 	private function saveRedirect(string $from, string $to, int $id = 0): int {
 
-		$from = $this->addUrlSlashes($from);
+		$from = $this->encodeURI($this->addUrlSlashes($from));
 		$to = $this->sanitizer->url($to);
 
 		// if target address is a relative path (local URL) and points to an existing page, store a page ID instead;
@@ -569,6 +567,50 @@ class ProcessRedirects extends Process {
 			$url = "/" . $url;
 		}
 		return $url;
+	}
+
+	/**
+	 * Encode URI mimicking JavaScript encodeURI() function
+	 *
+	 * Note: this method prevents double encoding by passing provided URI to urldecode() first.
+	 *
+	 * @see https://stackoverflow.com/questions/4929584/encodeuri-in-php/19858404
+	 * @see https://developer.mozilla.org/en/JavaScript/Reference/Global_Objects/encodeURI
+	 *
+	 * @param string $uri Raw URI
+	 * @return string Encoded URI
+	 */
+	private function encodeURI(string $uri): string {
+		return strtr(
+			rawurlencode(urldecode($uri)),
+			[
+				// Reserved Characters
+				'%3B' => ';',
+				'%2C' => ',',
+				'%2F' => '/',
+				'%3F' => '?',
+				'%3A' => ':',
+				'%40' => '@',
+				'%26' => '&',
+				'%3D' => '=',
+				'%2B' => '+',
+				'%24' => '$',
+				'%23' => '#',
+				// Unreserved Marks
+				'%2D' => '-',
+				'%5F' => '_',
+				'%2E' => '.',
+				'%21' => '!',
+				'%7E' => '~',
+				'%2A' => '*',
+				'%27' => "'",
+				'%28' => '(',
+				'%29' => ')',
+				// RFC3986 (IPv6)
+				'%5B' => '[',
+				'%5D' => ']',
+			]
+		);
 	}
 
 	/**

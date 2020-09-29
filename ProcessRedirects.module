@@ -53,7 +53,7 @@ class ProcessRedirects extends Process {
 	public function ___execute(): string {
 
 		// inject custom styles
-		$this->config->styles->add($this->config->urls->ProcessRedirects . 'css/redirects-admin.css');
+		$this->config->styles->add($this->config->urls->ProcessRedirects . 'css/admin.css');
 
 		/** @var MarkupAdminDataTable */
 		$table = $this->modules->get('MarkupAdminDataTable');
@@ -119,6 +119,9 @@ class ProcessRedirects extends Process {
 		// load vex
 		$this->wire('modules')->get('JqueryUI')->use('vex');
 
+		// load admin.js
+		$this->config->scripts->add($this->config->urls->ProcessRedirects . 'js/admin.js');
+
 		// default settings
 		$id = (int) $this->input->get->id ?: 0;
 		$from = '';
@@ -146,6 +149,7 @@ class ProcessRedirects extends Process {
 		$form = $this->modules->get('InputfieldForm');
 		$form->method = 'post';
 		$form->id = 'ProcessRedirectsEditForm';
+		$form->attr('data-no-redirect-to', $this->_('Please select target page.'));
 		$form->action = '../save/';
 
 		/** @var InputfieldHidden */
@@ -199,24 +203,6 @@ class ProcessRedirects extends Process {
 		$field->type = 'submit';
 		$field->value = $this->_('Save');
 		$form->add($field);
-
-		// populate the redirect_to field with the URL of the selected page and validate form values before submitting
-		$script = '
-		<script>
-		$("#select_page").on("pageSelected", function(event, data) {
-			if (data.url.length) $("#redirect_to").val(data.url);
-		});
-		$("#ProcessRedirectsEditForm").on("submit", function() {
-			if ($("#redirect_to").val() == "") {
-				ProcessWire.alert("' . $this->_('Please select target page.') . '");
-				if (typeof Inputfields === "object") {
-					Inputfields.highlight("select_page");
-				}
-				return false;
-			}
-		});
-		</script>
-		';
 
 		return $form->render() . $script;
 	}
@@ -275,6 +261,14 @@ class ProcessRedirects extends Process {
 		$id = (int) $this->input->post->id;
 		$from = $this->input->post->redirect_from;
 		$to = $this->input->post->redirect_to;
+
+		// fall back to select_page value if redirect_to is empty
+		if (empty($to) && $this->input->post->select_page && (int) $this->input->post->select_page == $this->input->post->select_page) {
+			$select_page = $this->pages->get((int) $this->input->post->select_page);
+			if ($select_page->id && !$select_page->isTrash() && $select_page->viewable()) {
+				$to = $select_page->url;
+			}
+		}
 
 		// check for errors; if an error is found, redirect back with an error message
 		if ($from == '' || $to == '') {

@@ -320,26 +320,51 @@ class ProcessRedirects extends Process {
 			$this->session->redirect('../', false);
 		}
 
+		// counter: skipped, added, edited
+		$count = [0, 0, 0];
+
+		// keep track of from paths in case there are duplicates
+		$paths = [];
+
 		foreach ($redirects_array as $redirect) {
 
+			// process redirect row ([from path],[to URL])
 			$redirect_urls = explode(',', $redirect);
+			$from = trim($redirect_urls[0] ?? '');
+			$to = trim($redirect_urls[1] ?? '');
 
-			$from = trim($redirect_urls[0]);
-			$to = trim($redirect_urls[1]);
-
-			// skip empty lines
+			// skip empty or partial rows
 			if ($from == '' || $to == '') {
+				if ($from != '' || $to != '') {
+					// partial row, log failure
+					$this->error(sprintf(
+						$this->_('Redirect skipped due to malformed input: %s'),
+						$redirect
+					));
+					++$count[0];
+				}
 				continue;
 			}
 
-			if ($this->saveRedirect($from, $to)) {
-				++$count;
+			// skip duplicates
+			if (array_key_exists($from, $paths)) {
+				$this->error(sprintf(
+					$this->_('Redirect skipped due to duplicate from path: %s'),
+					$redirect
+				));
+				++$count[0];
+				continue;
 			}
+			$paths[$from] = 1;
+
+			// save redirect and increment counter
+			$result_code = $this->saveRedirect($from, $to);
+			++$count[$result_code];
 		}
 
 		// redirect back with a success message
-		$this->message(sprintf(
-			$this->_n('Saved %d new redirect.', 'Saved %d new redirects.', $count),
+		$this->message(vsprintf(
+			$this->_('Saved redirects (%1$d skipped, %2$d added, %3$d updated)'),
 			$count
 		));
 		$this->session->redirect('../', false);
@@ -493,9 +518,9 @@ class ProcessRedirects extends Process {
 	 * @param string $from
 	 * @param string $to
 	 * @param int $id
-	 * @return bool
+	 * @return int 0 for failure, 1 for add (new redirect), 2 for edit (existing redirect)
 	 */
-	private function saveRedirect(string $from, string $to, int $id = 0): bool {
+	private function saveRedirect(string $from, string $to, int $id = 0): int {
 
 		$from = $this->addUrlSlashes($from);
 		$to = $this->sanitizer->url($to);
@@ -512,13 +537,13 @@ class ProcessRedirects extends Process {
 		// if 'id' argument is zero, we're adding a new redirect
 		if ($id === 0) {
 			$stmt = $this->database->prepare("
-				INSERT INTO " . self::TABLE_NAME . "
-				SET redirect_from = :from, redirect_to = :to
-				ON DUPLICATE KEY UPDATE id = id, redirect_from = redirect_from, redirect_to = redirect_to
+				INSERT INTO " . self::TABLE_NAME . " (redirect_from, redirect_to)
+				VALUES (:from, :to)
+				ON DUPLICATE KEY UPDATE redirect_from = VALUES(redirect_from), redirect_to = VALUES(redirect_to)
 			");
 			$stmt->bindParam('from', $from, \PDO::PARAM_STR);
 			$stmt->bindParam('to', $to, \PDO::PARAM_STR);
-			return $stmt->execute();
+			return $stmt->execute() ? $stmt->rowCount() : 0;
 		}
 
 		// nope, looks like we're updating existing redirect
@@ -530,7 +555,7 @@ class ProcessRedirects extends Process {
 		$stmt->bindParam('from', $from, \PDO::PARAM_STR);
 		$stmt->bindParam('to', $to, \PDO::PARAM_STR);
 		$stmt->bindParam('id', $id, \PDO::PARAM_INT);
-		return $stmt->execute();
+		return $stmt->execute() ? 2 : 0;
 	}
 
 	/**

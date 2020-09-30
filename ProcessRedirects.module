@@ -70,6 +70,12 @@ class ProcessRedirects extends Process {
 		// inject custom styles
 		$this->config->styles->add($this->config->urls->ProcessRedirects . 'css/admin.css');
 
+		// load vex
+		$this->wire('modules')->get('JqueryUI')->use('vex');
+
+		// load admin.js
+		$this->config->scripts->add($this->config->urls->ProcessRedirects . 'js/admin.js');
+
 		/** @var MarkupAdminDataTable */
 		$table = $this->modules->get('MarkupAdminDataTable');
 		$table
@@ -79,10 +85,6 @@ class ProcessRedirects extends Process {
 				$this->_("Test Redirect"),
 				$this->_('Hits'),
 				$this->_('Delete'),
-			])
-			->action([
-				$this->_('Add Redirect') => 'edit/?id=0',
-				$this->_('Import Redirects') => 'import/',
 			])
 			->setEncodeEntities(false);
 
@@ -102,17 +104,58 @@ class ProcessRedirects extends Process {
 				'<input type="checkbox" name="delete[]" value="' . (int) $redirect['id'] . '">',
 			]);
 		}
+		$table_rows = count($table->rows);
 
 		/** @var InputfieldButton */
-		$button = $this->modules->get('InputfieldButton');
-		$button->type = 'submit';
-		$button->id = 'submit_delete';
-		$button->value = $this->_('Remove selected redirects');
+		$button_add = $this->modules->get('InputfieldButton');
+		$button_add->id = 'add_button';
+		$button_add->value = $this->_('Add redirect');
+		$button_add->href = 'edit/?id=0';
+		$button_add->icon = 'plus-circle';
+		$button_add->showInHeader();
 
-		return '<form id="redirects_form" action="./delete/" method="post">'
+		/** @var InputfieldButton */
+		$button_import = $this->modules->get('InputfieldButton');
+		$button_import->id = 'import_button';
+		$button_import->value = $this->_('Import');
+		$button_import->href = 'import/';
+		$button_import->icon = 'paste';
+		$button_import->setSecondary();
+
+		$button_export = null;
+		if ($table_rows) {
+			/** @var InputfieldButton */
+			$button_export = $this->modules->get('InputfieldButton');
+			$button_export->id = 'export_button';
+			$button_export->value = $this->_('Export');
+			$button_export->href = 'export/';
+			$button_export->icon = 'copy';
+			$button_export->setSecondary();
+		}
+
+		$button_delete = null;
+		if ($table_rows) {
+			/** @var InputfieldButton */
+			$button_delete = $this->modules->get('InputfieldButton');
+			$button_delete->id = 'delete_button';
+			$button_delete->type = 'submit';
+			$button_delete->value = $this->_('Remove selected redirects');
+			$button_delete->icon = 'trash-o';
+			$button_delete->setSecondary();
+		}
+
+		$label_alert_select = $this->_('You need to select at least one item to delete first.');
+		$label_confirm_delete = $this->_('Are you sure you want to delete selected redirects?');
+		return '<form id="redirects_form" action="./delete/" method="post"'
+			. ' data-alert-select="' . $label_alert_select . '"'
+			. ' data-confirm-delete="' . $label_confirm_delete . '"'
+			. '>'
 			. $this->session->CSRF->renderInput()
 			. $table->render()
-			. $button->render()
+			. $button_add->render()
+			. $button_import->render()
+			. ($button_delete ? $button_delete->render() : '')
+			. ($button_export ? $button_export->render() : '')
 			. '</form>';
 	}
 
@@ -242,6 +285,7 @@ class ProcessRedirects extends Process {
 		/** @var InputfieldTextarea */
 		$field = $this->modules->get('InputfieldTextarea');
 		$field->label = $this->_('List of redirects');
+		$field->icon = 'paste';
 		// note: technically speaking commas are valid characters in URLs, so this may throw off the importer if a URL
 		// contains a comma (see https://stackoverflow.com/a/1547940/1397709 for details).
 		$field->description = $this->_('Comma separeted list, where each redirect is on one line. ie. /campaign/,/products/tools/offers/ or /campaign/,www.someotherdomain.com');
@@ -256,6 +300,49 @@ class ProcessRedirects extends Process {
 		$form->add($field);
 
 		return $form->render();
+	}
+
+	/**
+	 * Export view
+	 *
+	 * This method is called when requesting the Process page with /export/ suffix.
+	 *
+	 * @return string
+	 */
+	public function ___executeExport(): string {
+
+		$this->breadcrumb('../', $this->_('Redirects'));
+		$this->headline($this->_('Export Redirects'));
+
+		/** @var InputfieldWrapper */
+		$wrapper = $this->wire(new InputfieldWrapper);
+
+		/** @var InputfieldTextarea */
+		$field = $this->modules->get('InputfieldTextarea');
+		$field->label = $this->_('List of redirects');
+		$field->description = $this->_('This field contains all existing redirects. You can export them by selecting, copying, and pasting to a text editor or other application of your choice.');
+		$field->icon = 'copy';
+		$field->name = 'redirects';
+		$field->value = '';
+		$field->rows = 15;
+		$wrapper->add($field);
+
+		// find all redirects and add them to the export field
+		$redirects = $this->database->query('SELECT redirect_from, redirect_to FROM ' . self::TABLE_NAME . ' ORDER BY redirect_from');
+		foreach ($redirects as $redirect) {
+			$redirect_to = $this->makeRedirectToURL($redirect['redirect_to']);
+			$field->value = $field->value . $redirect['redirect_from'] . "," . $redirect_to. "\n";
+		}
+
+		/** @var InputfieldButton */
+		$button_back = $this->modules->get('InputfieldButton');
+		$button_back->id = 'back_button';
+		$button_back->value = $this->_('Back');
+		$button_back->href = '../';
+		$button_back->setSecondary();
+		$wrapper->add($button_back);
+
+		return $wrapper->render();
 	}
 
 	/**

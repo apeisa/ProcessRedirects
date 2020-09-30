@@ -26,4 +26,20 @@ $(function() {
 			}
 		}
 	});
+
+	// confirm delete
+	let confirmed = false;
+	$('#redirects_form').on('submit', function(event) {
+		if (confirmed) return;
+		if (!$('#redirects_form input[name="delete[]"]:checked:first').length) {
+			event.preventDefault();
+			ProcessWire.alert(event.target.getAttribute('data-alert-select'));
+			return;
+		}
+		event.preventDefault();
+		ProcessWire.confirm(event.target.getAttribute('data-confirm-delete'), function() {
+			confirmed = true;
+			event.target.submit();
+		});
+	});
 });

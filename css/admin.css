@@ -8,12 +8,6 @@
 	margin-bottom: 1em;
 }
 
-#redirects_form p button {
-	margin-bottom: 1em;
-	float: left;
-}
-
-#submit_delete {
+#delete_button {
 	float: right;
-	margin-right: 0;
 }

@@ -120,7 +120,6 @@ class ProcessRedirects extends Process {
 		$button_import->value = $this->_('Import');
 		$button_import->href = 'import/';
 		$button_import->icon = 'paste';
-		$button_import->setSecondary();
 
 		$button_export = null;
 		if ($table_rows) {

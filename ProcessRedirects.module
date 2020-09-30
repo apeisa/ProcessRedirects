@@ -34,6 +34,11 @@ class ProcessRedirects extends Process {
 			'href' => 'https://processwire.com/talk/topic/148-release-redirects/',
 			'version' => '1.1.0',
 			'permanent' => false,
+			'page' => [
+				'name' => 'redirects',
+				'parent' => 'setup',
+				'title' => 'Redirects',
+			],
 			'autoload' => true,
 			'singular' => true,
 			'permission' => 'redirects-admin',
@@ -620,17 +625,7 @@ class ProcessRedirects extends Process {
 	 * This method gets triggered when this module is installed.
 	 */
 	public function ___install(): void {
-
 		parent::___install();
-
-		$p = $this->wire(new Page());
-		$p->template = $this->templates->get('admin');
-		$p->parent = $this->pages->get('template=admin, name=setup');
-		$p->title = 'Redirects';
-		$p->name = 'redirects';
-		$p->process = $this;
-		$p->save();
-
 		$this->database->query("
 			CREATE TABLE " . self::TABLE_NAME . " (
 				id int unsigned NOT NULL auto_increment,
@@ -649,10 +644,7 @@ class ProcessRedirects extends Process {
 	 * This method gets triggered when this module is uninstalled.
 	 */
 	public function ___uninstall(): void {
-		$p = $this->pages->get('template=admin, name=redirects');
-		if ($p->id) {
-			$p->delete();
-		}
+		parent::___uninstall();
 		$this->database->query("DROP TABLE IF EXISTS " . self::TABLE_NAME);
 	}
 }

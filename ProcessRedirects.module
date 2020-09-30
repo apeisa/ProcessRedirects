@@ -15,7 +15,8 @@ class ProcessRedirects extends Process {
 	/**
 	 * Debug mode
 	 *
-	 * This is enabled by manually modifying this property. TEMPORARY, FOR DEVLEOPMENT USE ONLY.
+	 * This is enabled by manually modifying this property. Intended for module development purposes only, not to be
+	 * enabled on a live site.
 	 *
 	 * @var bool
 	 */

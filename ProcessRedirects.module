@@ -99,7 +99,7 @@ class ProcessRedirects extends Process {
 			$table->row([
 				'<a href="edit/?id=' . (int) $redirect['id'] . '">' . $redirect['redirect_from'] . '</a>',
 				'<a href="edit/?id=' . (int) $redirect['id'] . '">' . $redirect['redirect_to'] . '</a>',
-				'<a target="_blank" class="pw-panel pw-panel-right" data-panel-width="75%" href="' . substr($this->config->urls->root, 0, -1) . $redirect['redirect_from'] . '">' . $this->_('Test') . '</a>',
+				'<a target="_blank" class="pw-panel pw-panel-right" data-panel-width="75%" href="' . substr($this->config->urls->root, 0, -1) . $redirect['redirect_from'] . '">' . $this->_('Test') . ' <i class="fa fa-external-link" aria-hidden="true"></i></a>',
 				(int) $redirect['counter'],
 				'<input type="checkbox" name="delete[]" value="' . (int) $redirect['id'] . '">',
 			]);

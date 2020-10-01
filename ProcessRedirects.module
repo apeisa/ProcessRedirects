@@ -3,14 +3,21 @@
 /**
  * Redirects module for ProcessWire
  */
-class ProcessRedirects extends Process {
+class ProcessRedirects extends Process implements ConfigurableModule {
 
 	/**
 	 * Name of the redirects database table
 	 *
 	 * @var string
 	 */
-	const TABLE_NAME = 'ProcessRedirects';
+	const TABLE_NAME = 'process_redirects';
+
+	/**
+	 * Schema version for database table used by this module
+	 *
+	 * @var int
+	 */
+	const SCHEMA_VERSION = 2;
 
 	/**
 	 * Debug mode
@@ -23,6 +30,19 @@ class ProcessRedirects extends Process {
 	protected $debug_mode = false;
 
 	/**
+	 * Populate the default config data
+	 *
+	 * ProcessWire will automatically overwrite these values with anything the user has specifically configured. This
+	 * is done in construct() rather than init() because ProcessWire populates config data after construct(), but
+	 * before init().
+	 */
+	public function __construct() {
+		foreach (self::getDefaultData() as $key => $value) {
+			$this->set($key, $value);
+		}
+	}
+
+	/**
 	 * Get module info
 	 *
 	 * @return array
@@ -32,7 +52,7 @@ class ProcessRedirects extends Process {
 			'title' => 'Redirects',
 			'summary' => __('Manage redirects'),
 			'href' => 'https://processwire.com/talk/topic/148-release-redirects/',
-			'version' => '1.1.0',
+			'version' => '2.0.0',
 			'permanent' => false,
 			'page' => [
 				'name' => 'redirects',
@@ -51,12 +71,44 @@ class ProcessRedirects extends Process {
 	}
 
 	/**
+	 * Default configuration for this module
+	 *
+	 * @return array
+	 */
+	static public function getDefaultData() {
+		return [
+			'schema_version' => 1,
+		];
+	}
+
+	/**
+	 * Module configuration
+	 *
+	 * Note: at the moment thi method doesn't do much of anything, and primarily exists so that we can store the schema
+	 * version info in module configuration.
+	 *
+	 * @param array $data
+	 * @return InputfieldWrapper
+	 */
+	static public function getModuleConfigInputfields(array $data): InputfieldWrapper {
+		$data = array_merge(self::getDefaultData(), $data);
+		$fields = new InputfieldWrapper();
+		return $fields;
+	}
+
+	/**
 	 * Init method
 	 *
 	 * This method is called when the module is loaded. We use it to attach hooks.
 	 */
 	public function init() {
 		parent::init();
+
+		// check for a database schema update
+		if ($this->schema_version < self::SCHEMA_VERSION) {
+			$this->updateDatabaseSchema();
+		}
+
 		$this->addHook('ProcessPageView::pageNotFound', $this, 'checkRedirects');
 	}
 
@@ -703,6 +755,35 @@ class ProcessRedirects extends Process {
 				'%5D' => ']',
 			]
 		);
+	}
+
+	/**
+	 * Update database schema
+	 *
+	 * This method applies incremental updates until latest schema version is reached. Current schema version is stored
+	 * in module config.
+	 *
+	 * @throws WireException if database schema version isn't recognized
+	 */
+	private function updateDatabaseSchema() {
+		while ($this->schema_version < self::SCHEMA_VERSION) {
+			++$this->schema_version;
+			switch ($this->schema_version) {
+				case 2:
+					try {
+						$this->database->exec("RENAME TABLE `ProcessRedirects` TO `process_redirects`");
+					} catch (\Exception $e) {
+						// just in case
+					}
+					break;
+				default:
+					throw new WireException(sprintf(
+						"Unrecognized database schema version %s",
+						$this->schema_version
+					));
+			}
+			$this->modules->saveConfig($this, 'schema_version', $this->schema_version);
+		}
 	}
 
 	/**

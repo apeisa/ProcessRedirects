@@ -17,7 +17,7 @@ class ProcessRedirects extends Process implements ConfigurableModule {
 	 *
 	 * @var int
 	 */
-	const SCHEMA_VERSION = 2;
+	const SCHEMA_VERSION = 3;
 
 	/**
 	 * Debug mode
@@ -735,6 +735,12 @@ class ProcessRedirects extends Process implements ConfigurableModule {
 		while ($this->schema_version < self::SCHEMA_VERSION) {
 			++$this->schema_version;
 			switch ($this->schema_version) {
+				case 3:
+					$this->database->exec("
+						ALTER TABLE " . self::TABLE_NAME . "
+						MODIFY COLUMN redirect_from VARCHAR(250) NOT NULL DEFAULT '',
+						MODIFY COLUMN redirect_to VARCHAR(250) NOT NULL DEFAULT ''
+					");
 				case 2:
 					try {
 						$this->database->exec("RENAME TABLE `ProcessRedirects` TO `process_redirects`");
@@ -763,12 +769,13 @@ class ProcessRedirects extends Process implements ConfigurableModule {
 			CREATE TABLE " . self::TABLE_NAME . " (
 				id int unsigned NOT NULL auto_increment,
 				counter int unsigned DEFAULT 0,
-				redirect_from varchar(255) NOT NULL DEFAULT '',
-				redirect_to varchar(255) NOT NULL DEFAULT '',
+				redirect_from varchar(250) NOT NULL DEFAULT '',
+				redirect_to varchar(250) NOT NULL DEFAULT '',
 				PRIMARY KEY(id),
 				UNIQUE KEY(redirect_from)
 			) ENGINE = MYISAM;
 		");
+		$this->modules->saveConfig($this, 'schema_version', self::SCHEMA_VERSION);
 	}
 
 	/**

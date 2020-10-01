@@ -7,7 +7,8 @@ $(function() {
 			if (redirect_from[0] != "/") {
 				redirect_from = "/" + redirect_from;
 			}
-			$(this).val(encodeURI(decodeURI(redirect_from)));
+			// note: we can't use encodeURI() here since it would also unnecessarily encode various UTF-8 characters
+			$(this).val(redirect_from.trim().replace(' ', '%20'));
 		}
 	});
 

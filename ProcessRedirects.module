@@ -52,7 +52,7 @@ class ProcessRedirects extends Process implements ConfigurableModule {
 			'title' => 'Redirects',
 			'summary' => __('Manage redirects'),
 			'href' => 'https://processwire.com/talk/topic/148-release-redirects/',
-			'version' => '2.0.0',
+			'version' => '2.0.1',
 			'permanent' => false,
 			'page' => [
 				'name' => 'redirects',
@@ -141,6 +141,7 @@ class ProcessRedirects extends Process implements ConfigurableModule {
 			->setEncodeEntities(false);
 
 		// find all redirects and add them to the table
+		$row_count = 0;
 		$redirects = $this->database->query('SELECT * FROM ' . self::TABLE_NAME . ' ORDER BY redirect_from');
 		foreach ($redirects as $redirect) {
 
@@ -155,8 +156,9 @@ class ProcessRedirects extends Process implements ConfigurableModule {
 				(int) $redirect['counter'],
 				'<input type="checkbox" name="delete[]" value="' . (int) $redirect['id'] . '">',
 			]);
+
+			++$row_count;
 		}
-		$table_rows = count($table->rows);
 
 		/** @var InputfieldButton */
 		$button_add = $this->modules->get('InputfieldButton');
@@ -174,7 +176,7 @@ class ProcessRedirects extends Process implements ConfigurableModule {
 		$button_import->icon = 'paste';
 
 		$button_export = null;
-		if ($table_rows) {
+		if ($row_count) {
 			/** @var InputfieldButton */
 			$button_export = $this->modules->get('InputfieldButton');
 			$button_export->id = 'export_button';
@@ -185,7 +187,7 @@ class ProcessRedirects extends Process implements ConfigurableModule {
 		}
 
 		$button_delete = null;
-		if ($table_rows) {
+		if ($row_count) {
 			/** @var InputfieldButton */
 			$button_delete = $this->modules->get('InputfieldButton');
 			$button_delete->id = 'delete_button';

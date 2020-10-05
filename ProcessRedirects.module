@@ -52,7 +52,7 @@ class ProcessRedirects extends Process implements ConfigurableModule {
 			'title' => 'Redirects',
 			'summary' => __('Manage redirects'),
 			'href' => 'https://processwire.com/talk/topic/148-release-redirects/',
-			'version' => '2.0.2',
+			'version' => '2.0.3',
 			'permanent' => false,
 			'page' => [
 				'name' => 'redirects',
@@ -429,9 +429,17 @@ class ProcessRedirects extends Process implements ConfigurableModule {
 		if ($from == '' || $to == '') {
 			$this->error($this->_('No redirect created, please check provided values.'));
 			$this->session->redirect('../', false);
-		} else if ($this->pages->getByPath($this->sanitizer->path($from))->id) {
-			$this->error($this->_('The Redirect From URL already exists as a page path. Redirect not added.'));
-			$this->session->redirect('../', false);
+		} else {
+			$clean_path = $this->sanitizer->path($from);
+			$path_match = $this->pages->getByPath($clean_path, [
+				'useLanguages' => true,
+			]);
+			// check if given path matches existing page and validate the result by comparing full paths (Pages::getByPath()
+			// can return a partial match if the page name is unique) and basenames (in case there's a multi-lingual match)
+			if ($path_match->id && ($path_match->path == $clean_path || $path_match->name != basename($clean_path))) {
+				$this->error($this->_('The Redirect From URL already exists as a page path. Redirect not added.'));
+				$this->session->redirect('../', false);
+			}
 		}
 
 		// save redirect and redirect back with a success message

@@ -52,7 +52,7 @@ class ProcessRedirects extends Process implements ConfigurableModule {
 			'title' => 'Redirects',
 			'summary' => __('Manage redirects'),
 			'href' => 'https://processwire.com/talk/topic/148-release-redirects/',
-			'version' => '2.0.3',
+			'version' => '2.1.0',
 			'permanent' => false,
 			'page' => [
 				'name' => 'redirects',
@@ -597,15 +597,24 @@ class ProcessRedirects extends Process implements ConfigurableModule {
 
 		// grab query string
 		$query = $parsed_url['query'] ?? null;
+		$query_url = $query === null ? null : $url . '?' . $query . '&';
+
+		// check if query string matches should be checked as well (query string is present and database contains
+		// redirect_from paths with query strings)
+		$use_query_url = $query_url !== null && $this->database->query("SELECT id FROM " . self::TABLE_NAME . " WHERE redirect_from LIKE '/%?%' LIMIT 1")->rowCount();
 
 		// now see if it's in the DB
 		$stmt = $this->database->prepare("
 			SELECT id, redirect_to
 			FROM " . self::TABLE_NAME . "
 			WHERE :url LIKE REPLACE(TRIM(TRAILING '/' FROM redirect_from), '*', '%')
+			" . ($use_query_url ? "OR :query_url LIKE CONCAT(REPLACE(TRIM(TRAILING '/' FROM REPLACE(redirect_from, '/?', '?')), '*', '%'), '&%')" : "") . "
 			LIMIT 1
 		");
 		$stmt->bindParam('url', $url, \PDO::PARAM_STR);
+		if ($use_query_url) {
+			$stmt->bindParam('query_url', $query_url, \PDO::PARAM_STR);
+		}
 		$stmt->execute();
 		$result = $stmt->fetch(\PDO::FETCH_NUM);
 

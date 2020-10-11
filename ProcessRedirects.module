@@ -52,7 +52,7 @@ class ProcessRedirects extends Process implements ConfigurableModule {
 			'title' => 'Redirects',
 			'summary' => __('Manage redirects'),
 			'href' => 'https://processwire.com/talk/topic/148-release-redirects/',
-			'version' => '2.1.0',
+			'version' => '2.2.0',
 			'permanent' => false,
 			'page' => [
 				'name' => 'redirects',
@@ -75,7 +75,7 @@ class ProcessRedirects extends Process implements ConfigurableModule {
 	 *
 	 * @return array
 	 */
-	static public function getDefaultData() {
+	public static function getDefaultData() {
 		return [
 			'schema_version' => 1,
 		];
@@ -90,7 +90,7 @@ class ProcessRedirects extends Process implements ConfigurableModule {
 	 * @param array $data
 	 * @return InputfieldWrapper
 	 */
-	static public function getModuleConfigInputfields(array $data): InputfieldWrapper {
+	public static function getModuleConfigInputfields(array $data): InputfieldWrapper {
 		$data = array_merge(self::getDefaultData(), $data);
 		$fields = new InputfieldWrapper();
 		return $fields;
@@ -118,9 +118,6 @@ class ProcessRedirects extends Process implements ConfigurableModule {
 	 * @return string
 	 */
 	public function ___execute(): string {
-
-		// inject custom styles
-		$this->config->styles->add($this->config->urls->ProcessRedirects . 'css/admin.css');
 
 		// load vex
 		$this->wire('modules')->get('JqueryUI')->use('vex');
@@ -164,7 +161,7 @@ class ProcessRedirects extends Process implements ConfigurableModule {
 		$button_add = $this->modules->get('InputfieldButton');
 		$button_add->id = 'add_button';
 		$button_add->value = $this->_('Add redirect');
-		$button_add->href = 'edit/?id=0';
+		$button_add->href = './edit/?id=0';
 		$button_add->icon = 'plus-circle';
 		$button_add->showInHeader();
 
@@ -172,7 +169,7 @@ class ProcessRedirects extends Process implements ConfigurableModule {
 		$button_import = $this->modules->get('InputfieldButton');
 		$button_import->id = 'import_button';
 		$button_import->value = $this->_('Import');
-		$button_import->href = 'import/';
+		$button_import->href = './import/';
 		$button_import->icon = 'paste';
 
 		$button_export = null;
@@ -181,7 +178,7 @@ class ProcessRedirects extends Process implements ConfigurableModule {
 			$button_export = $this->modules->get('InputfieldButton');
 			$button_export->id = 'export_button';
 			$button_export->value = $this->_('Export');
-			$button_export->href = 'export/';
+			$button_export->href = './export/';
 			$button_export->icon = 'copy';
 			$button_export->setSecondary();
 		}
@@ -194,12 +191,13 @@ class ProcessRedirects extends Process implements ConfigurableModule {
 			$button_delete->type = 'submit';
 			$button_delete->value = $this->_('Remove selected redirects');
 			$button_delete->icon = 'trash-o';
+			$button_delete->addClass('uk-align-right');
 			$button_delete->setSecondary();
 		}
 
 		$label_alert_select = $this->_('You need to select at least one item to delete first.');
 		$label_confirm_delete = $this->_('Are you sure you want to delete selected redirects?');
-		return '<form id="redirects_form" action="./delete/" method="post"'
+		return '<form id="redirects_form" action="./delete/" method="post" class="uk-margin-bottom"'
 			. ' data-alert-select="' . $label_alert_select . '"'
 			. ' data-confirm-delete="' . $label_confirm_delete . '"'
 			. '>'
@@ -330,29 +328,7 @@ class ProcessRedirects extends Process implements ConfigurableModule {
 		$this->breadcrumb('../', $this->_('Redirects'));
 		$this->headline($this->_('Import Redirects'));
 
-		/** @var InputfieldForm */
-		$form = $this->modules->get('InputfieldForm');
-		$form->method = 'post';
-		$form->action = '../savearray/';
-
-		/** @var InputfieldTextarea */
-		$field = $this->modules->get('InputfieldTextarea');
-		$field->label = $this->_('List of redirects');
-		$field->icon = 'paste';
-		// note: technically speaking commas are valid characters in URLs, so this may throw off the importer if a URL
-		// contains a comma (see https://stackoverflow.com/a/1547940/1397709 for details).
-		$field->description = $this->_('Comma separeted list, where each redirect is on one line. ie. /campaign/,/products/tools/offers/ or /campaign/,www.someotherdomain.com');
-		$field->name = 'redirects';
-		$field->rows = 15;
-		$form->add($field);
-
-		/** @var InputfieldButton */
-		$field = $this->modules->get('InputfieldButton');
-		$field->type = 'submit';
-		$field->value = $this->_('Add New Redirects');
-		$form->add($field);
-
-		return $form->render();
+		return $this->getImportForm()->render();
 	}
 
 	/**
@@ -369,6 +345,9 @@ class ProcessRedirects extends Process implements ConfigurableModule {
 
 		/** @var InputfieldWrapper */
 		$wrapper = $this->wire(new InputfieldWrapper);
+		$wrapper->setClasses([
+			'list' => 'Inputfields uk-grid uk-grid-collapse uk-grid-match uk-grid-stack uk-margin-bottom',
+		]);
 
 		/** @var InputfieldTextarea */
 		$field = $this->modules->get('InputfieldTextarea');
@@ -384,7 +363,7 @@ class ProcessRedirects extends Process implements ConfigurableModule {
 		$redirects = $this->database->query('SELECT redirect_from, redirect_to FROM ' . self::TABLE_NAME . ' ORDER BY redirect_from');
 		foreach ($redirects as $redirect) {
 			$redirect_to = $this->makeRedirectToURL($redirect['redirect_to']);
-			$field->value = $field->value . $redirect['redirect_from'] . "," . $redirect_to. "\n";
+			$field->value = $field->value . "\n" . $redirect['redirect_from'] . "," . $redirect_to;
 		}
 
 		/** @var InputfieldButton */
@@ -393,9 +372,56 @@ class ProcessRedirects extends Process implements ConfigurableModule {
 		$button_back->value = $this->_('Back');
 		$button_back->href = '../';
 		$button_back->setSecondary();
-		$wrapper->add($button_back);
 
-		return $wrapper->render();
+		/** @var InputfieldButton */
+		$button_csv = $this->modules->get('InputfieldButton');
+		$button_csv->id = 'csv_download_button';
+		$button_csv->value = $this->_('Download CSV');
+		$button_csv->icon = 'file-excel-o';
+		$button_csv->href = '../download/';
+		$button_csv->addClass('uk-align-right');
+		$button_csv->setSecondary();
+
+		return $wrapper->render()
+			. $button_back->render()
+			. $button_csv->render();
+	}
+
+	/**
+	 * Download view
+	 *
+	 * This method is called when requesting the Process page with /download/ suffix.
+	 */
+	public function ___executeDownload() {
+
+		// define output file name
+		$filename = "redirects_" . date('Y-m-d_H-i') . ".csv";
+
+		// send CSV headers
+		header("Content-type: application/force-download");
+		header("Content-Transfer-Encoding: Binary");
+		header("Content-disposition: attachment; filename=$filename");
+
+		// open file pointer and write header row
+		$fp = fopen('php://output', 'w');
+		fputcsv($fp, [
+			'redirect_from',
+			'redirect_to',
+		]);
+
+		// find all redirects and add them to output
+		$redirects = $this->database->query('SELECT redirect_from, redirect_to FROM ' . self::TABLE_NAME . ' ORDER BY redirect_from');
+		foreach ($redirects as $redirect) {
+			$redirect_to = $this->makeRedirectToURL($redirect['redirect_to']);
+			fputcsv($fp, [
+				$redirect['redirect_from'],
+				$redirect_to,
+			]);
+		}
+
+		// close file pointer and exit
+		fclose($fp);
+		exit();
 	}
 
 	/**
@@ -458,6 +484,7 @@ class ProcessRedirects extends Process implements ConfigurableModule {
 	 * This method is called when requesting the Process page with /savearray/ suffix.
 	 *
 	 * @throws WireException if CSRF token is missing or invalid.
+	 * @throws WireException if uploaded CSV file can't be read.
 	 */
 	public function ___executeSavearray(): void {
 
@@ -467,10 +494,39 @@ class ProcessRedirects extends Process implements ConfigurableModule {
 		}
 
 		$count = 0;
-		$redirects_array = explode("\n", $this->input->post->redirects);
+		$redirects_array = [];
+
+		if ($this->input->post->import_from == 'file') {
+			// file upload
+			$form = $this->getImportForm();
+			$form->processInput($this->input->post);
+			if (count($form->getErrors())) {
+				$this->error($this->_('No redirects created, invalid import file.'));
+				$this->session->redirect('../', false);
+			}
+			$file = basename($form->getChildByName('file')->value);
+			if (!empty($file)) {
+				$upload_path = $this->getUploadPath();
+				$upload_file = $upload_path . $file;
+				if (file_exists($upload_file)) {
+					$fp = fopen($upload_file, "r");
+					if ($fp === false) {
+						throw new WireException($this->_('Unable to read uploaded CSV file.'));
+					}
+					while (($redirect = fgets($fp)) !== false) {
+						$redirects_array[] = $redirect;
+					}
+					fclose($fp);
+					$this->files->unlink($upload_file, $upload_path);
+				}
+			}
+		} else {
+			// text input
+			$redirects_array = explode("\n", $this->input->post->redirects);
+		}
 
 		if (empty($redirects_array) || $redirects_array[0] == '') {
-			$this->error($this->_('No redirect created, please check your values.'));
+			$this->error($this->_('No redirects created, please check your values.'));
 			$this->session->redirect('../', false);
 		}
 
@@ -486,6 +542,11 @@ class ProcessRedirects extends Process implements ConfigurableModule {
 			$redirect_urls = explode(',', $redirect);
 			$from = trim($redirect_urls[0] ?? '');
 			$to = trim($redirect_urls[1] ?? '');
+
+			// silently skip header row
+			if ($from == 'redirect_from' && $to == 'redirect_to') {
+				continue;
+			}
 
 			// skip empty or partial rows
 			if ($from == '' || $to == '') {
@@ -674,6 +735,98 @@ class ProcessRedirects extends Process implements ConfigurableModule {
 		}
 
 		return $to;
+	}
+
+	/**
+	 * Get form for the import feature
+	 *
+	 * @return InputfieldForm
+	 */
+	private function getImportForm(): InputfieldForm {
+
+		// get upload path
+		$upload_path = $this->getUploadPath();
+
+		/** @var InputfieldForm */
+		$form = $this->modules->get('InputfieldForm');
+		$form->method = 'post';
+		$form->action = '../savearray/';
+
+		/** @var InputfieldRadios */
+		if ($upload_path !== null) {
+			$import_from_field = $this->modules->get('InputfieldRadios');
+			$import_from_field->name = 'import_from';
+			$import_from_field->label = $this->_('Import from');
+			$import_from_field->optionColumns = 1;
+			$import_from_field->icon = 'toggle-on';
+			$import_from_field->value = 'text';
+			$import_from_field->addOptions([
+				'text' => $this->_('Text input'),
+				'file' => $this->_('File upload'),
+			]);
+			$form->add($import_from_field);
+		}
+
+		/** @var InputfieldTextarea */
+		$redirects_field = $this->modules->get('InputfieldTextarea');
+		$redirects_field->label = $this->_('List of redirects');
+		$redirects_field->icon = 'paste';
+		// note: technically speaking commas are valid characters in URLs, so this may throw off the importer if a URL
+		// contains a comma (see https://stackoverflow.com/a/1547940/1397709 for details).
+		$redirects_field->description = $this->_('Comma separated list, where each line contains one redirect (redirect_from,redirect_to).');
+		$redirects_field->notes = implode("\n", [
+			$this->_('Example') . ":\n",
+			$this->_('/campaign/,/products/tools/offers/'),
+			$this->_('/another-campaign/,https://www.example.com'),
+			$this->_('/index.php?page=2,/about-us/'),
+			$this->_('/shop/products/*,/products/'),
+		]);
+		$redirects_field->name = 'redirects';
+		$redirects_field->rows = 15;
+		if ($upload_path !== null) {
+			$redirects_field->showIf = 'import_from=text';
+		}
+		$form->add($redirects_field);
+
+		if ($upload_path !== null) {
+			/** @var InputfieldFile */
+			$file_field = $this->modules->get('InputfieldFile');
+			$file_field->name = 'file';
+			$file_field->label = $this->_('Upload file');
+			$file_field->description = $this->_('Import redirects by uploading a CSV file. Each row should contain two comma separated values: local source path (1) and redirect target (2).');
+			$file_field->notes = $this->_("1. Source path should be a non-existing path on current site (e.g. /some/path/).\n2. Redirect target may be local path (/path/to/page/), external URL (https://www.example.com/), or page ID prefixed with a caret (e.g. ^1234).");
+			$file_field->icon = 'upload';
+			$file_field->extensions = 'csv';
+			$file_field->overwrite = 'true';
+			$file_field->maxFiles = 1;
+			$file_field->descriptionRows = 0;
+			$file_field->destinationPath = $upload_path;
+			$file_field->showIf = 'import_from=file';
+			$form->add($file_field);
+		}
+
+		/** @var InputfieldButton */
+		$button_submit = $this->modules->get('InputfieldButton');
+		$button_submit->type = 'submit';
+		$button_submit->value = $this->_('Add New Redirects');
+		$form->add($button_submit);
+
+		return $form;
+	}
+
+	/**
+	 * Get upload path
+	 *
+	 * Check if upload path exists; if not found, attempt to create it.
+	 *
+	 * @return string|null Upload path or null if not found and unable to create
+	 */
+	private function getUploadPath(): ?string {
+		$upload_path = $this->config->paths->cache . 'ProcessRedirects/';
+		if (!is_dir($upload_path) && !wireMkdir($upload_path)) {
+			return null;
+		}
+		return $upload_path;
 	}
 
 	/**

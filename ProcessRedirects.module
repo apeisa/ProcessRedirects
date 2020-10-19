@@ -52,7 +52,7 @@ class ProcessRedirects extends Process implements ConfigurableModule {
 			'title' => 'Redirects',
 			'summary' => __('Manage redirects'),
 			'href' => 'https://processwire.com/talk/topic/148-release-redirects/',
-			'version' => '2.3.0',
+			'version' => '2.2.0',
 			'permanent' => false,
 			'page' => [
 				'name' => 'redirects',

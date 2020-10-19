@@ -52,7 +52,7 @@ class ProcessRedirects extends Process implements ConfigurableModule {
 			'title' => 'Redirects',
 			'summary' => __('Manage redirects'),
 			'href' => 'https://processwire.com/talk/topic/148-release-redirects/',
-			'version' => '2.2.0',
+			'version' => '2.2.1',
 			'permanent' => false,
 			'page' => [
 				'name' => 'redirects',
@@ -523,7 +523,7 @@ class ProcessRedirects extends Process implements ConfigurableModule {
 			}
 		} else {
 			// text input
-			$redirects_array = explode("\n", $this->input->post->redirects);
+			$redirects_array = preg_split("/\r\n|\n|\r/", $this->input->post->redirects);
 		}
 
 		if (empty($redirects_array) || $redirects_array[0] == '') {
@@ -541,8 +541,8 @@ class ProcessRedirects extends Process implements ConfigurableModule {
 
 			// process redirect row ([from path],[to URL])
 			$redirect_urls = explode(',', $redirect);
-			$from = trim($redirect_urls[0] ?? '');
-			$to = trim($redirect_urls[1] ?? '');
+			$from = trim($redirect_urls[0] ?? '', " \t\n\r\0\x0B\"");
+			$to = trim($redirect_urls[1] ?? '', " \t\n\r\0\x0B\"");
 
 			// silently skip header row
 			if ($from == 'redirect_from' && $to == 'redirect_to') {

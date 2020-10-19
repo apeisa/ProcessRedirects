@@ -1,0 +1,7 @@
+{
+    "name": "apeisa/process-redirects",
+    "type": "pw-module",
+    "require": {
+        "wireframe-framework/processwire-composer-installer": "^1.0.0"
+    }
+}

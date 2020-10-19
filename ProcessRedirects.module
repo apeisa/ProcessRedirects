@@ -52,7 +52,7 @@ class ProcessRedirects extends Process implements ConfigurableModule {
 			'title' => 'Redirects',
 			'summary' => __('Manage redirects'),
 			'href' => 'https://processwire.com/talk/topic/148-release-redirects/',
-			'version' => '2.0.3',
+			'version' => '2.1.0',
 			'permanent' => false,
 			'page' => [
 				'name' => 'redirects',
@@ -263,6 +263,9 @@ class ProcessRedirects extends Process implements ConfigurableModule {
 		$form->attr('data-no-redirect-to', $this->_('Please select target page.'));
 		$form->action = '../save/';
 
+		// add instructions field
+		$form->add($this->getInstructions());
+
 		/** @var InputfieldHidden */
 		$field = $this->modules->get('InputfieldHidden');
 		$field->name = 'id';
@@ -274,10 +277,8 @@ class ProcessRedirects extends Process implements ConfigurableModule {
 		$field->label = $this->_('Redirect From');
 		$field->required = true;
 		$field->requiredAttr = true;
-		$field->description = $this->_('Enter relative URL with slashes.')
-			. "\n\n"
-			. $this->_("Example: /summer/\nExample: /products/t-shirt.html");
-		$field->notes = $this->_('Note: Redirect From must not match any existing, viewable page. Existing page takes precedence over redirect, in which case the redirect is effectively rendered inactive.');
+		$field->description = $this->_('Enter relative path with slashes (e.g. `/some/path/`).');
+		$field->notes = $this->_('Note: Redirect From must not match any existing, viewable page. See "Instructions" section for more details.');
 		$field->attr('id+name', 'redirect_from');
 		$field->value = $from;
 		$form->add($field);
@@ -597,15 +598,24 @@ class ProcessRedirects extends Process implements ConfigurableModule {
 
 		// grab query string
 		$query = $parsed_url['query'] ?? null;
+		$query_url = $query === null ? null : $url . '?' . $query . '&';
+
+		// check if query string matches should be checked as well (query string is present and database contains
+		// redirect_from paths with query strings)
+		$use_query_url = $query_url !== null && $this->database->query("SELECT id FROM " . self::TABLE_NAME . " WHERE redirect_from LIKE '/%?%' LIMIT 1")->rowCount();
 
 		// now see if it's in the DB
 		$stmt = $this->database->prepare("
 			SELECT id, redirect_to
 			FROM " . self::TABLE_NAME . "
-			WHERE :url LIKE REPLACE(TRIM(TRAILING '/' FROM redirect_from), '*', '%')
+			WHERE :url LIKE REPLACE(REPLACE(TRIM(TRAILING '/' FROM redirect_from), '*', '%'), '_', '\_')
+			" . ($use_query_url ? "OR :query_url LIKE CONCAT(REPLACE(REPLACE(TRIM(TRAILING '/' FROM REPLACE(redirect_from, '/?', '?')), '*', '%'), '_', '\_'), '&%')" : "") . "
 			LIMIT 1
 		");
 		$stmt->bindParam('url', $url, \PDO::PARAM_STR);
+		if ($use_query_url) {
+			$stmt->bindParam('query_url', $query_url, \PDO::PARAM_STR);
+		}
 		$stmt->execute();
 		$result = $stmt->fetch(\PDO::FETCH_NUM);
 
@@ -613,10 +623,7 @@ class ProcessRedirects extends Process implements ConfigurableModule {
 		if ($this->debug_mode) {
 			echo "<pre>";
 			$stmt->debugDumpParams();
-			if ($result === false) {
-				die("\nMISS");
-			}
-			die("\nHIT: " . var_export($result, true));
+			die("\n" . ($result === false ? "MISS" : "HIT: " . var_export($result, true)));
 		}
 
 		// bail out early if there was no match
@@ -734,6 +741,30 @@ class ProcessRedirects extends Process implements ConfigurableModule {
 	 */
 	private function formatURL(string $uri): string {
 		return str_replace(' ', '%20', trim($uri));
+	}
+
+	/**
+	 * Get instructions inputfield
+	 *
+	 * @return InputfieldMarkup
+	 */
+	private function getInstructions(): InputfieldMarkup {
+
+		/** @var InputfieldMarkup */
+		$instructions = $this->modules->get('InputfieldMarkup');
+		$instructions->label = $this->_('Instructions');
+		$instructions->value = $this->sanitizer->entitiesMarkdown(implode("\n", [
+			$this->_('The value in the "Redirect From" field should be a local, relative path — such as `/some/path/`. Provided path must also not match that of any existing page; existing page always takes precedence over a redirect, effectively rendering the redirect inactive.') . "\n",
+			$this->_('Examples of supported values:'),
+			$this->_('- Path with one or more parts: `/campaign/`, `/old/site/path/`, etc.'),
+			$this->_('- Path with a file extension: `/products/t-shirt.html`'),
+			$this->_('- Path with a query string: `/index.php?page=2`') . "\n",
+			$this->_('You may use "`*`" as a wildcard for matching zero or more characters: `/products/*` would match `/products/`, `/products/t-shirt/`, etc.'),
+		]), ['fullMarkdown' => true]);
+		$instructions->icon = 'info-circle';
+		$instructions->collapsed = Inputfield::collapsedYes;
+
+		return $instructions;
 	}
 
 	/**

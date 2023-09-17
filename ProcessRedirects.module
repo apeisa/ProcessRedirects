@@ -52,7 +52,7 @@ class ProcessRedirects extends Process implements ConfigurableModule {
 			'title' => 'Redirects',
 			'summary' => __('Manage redirects'),
 			'href' => 'https://processwire.com/talk/topic/148-release-redirects/',
-			'version' => '2.2.1',
+			'version' => '2.2.2',
 			'permanent' => false,
 			'page' => [
 				'name' => 'redirects',
@@ -648,8 +648,17 @@ class ProcessRedirects extends Process implements ConfigurableModule {
 	 */
 	public function checkRedirects(HookEvent $event): void {
 
-		// determine the URL that wasn't found
-		$parsed_url = parse_url($_SERVER['REQUEST_URI']);
+		// get requested URL
+		$request_url = $_SERVER['REQUEST_URI'] ?? '';
+
+		// multiple slashes at the beginning of the URL are assumed to be a mistake, an unexpected result of a redirect, or an attempt to
+		// somehow exploit the system, so we'll remove them
+		if (strpos($request_url, '//') === 0) {
+			$request_url = '/' . ltrim($request_url, '/');
+		}
+
+		// determine the URL path that wasn't found
+		$parsed_url = parse_url($request_url);
 		$url = rtrim($parsed_url['path'], '/');
 
 		// if installed in a subdirectory, make $url relative to the directory ProcessWire is installed in
